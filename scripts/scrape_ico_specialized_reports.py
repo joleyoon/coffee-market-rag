@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Scrape PDF report links from the ICO specialized reports page.
-
-This script fetches https://ico.org/specialized-reports/, extracts PDF links,
-stores a JSON manifest, and can optionally download the files.
-"""
+"""Scrape and download PDF reports from the ICO specialized reports page."""
 
 from __future__ import annotations
 
@@ -23,6 +19,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_URL = "https://ico.org/specialized-reports/"
 DEFAULT_OUTPUT_DIR = Path("data/raw/ico/specialized-reports")
+DEFAULT_SECTION = "COFFEE MARKET REPORTS"
 USER_AGENT = "coffee-market-rag/0.1 (+https://github.com/)"
 
 
@@ -68,6 +65,7 @@ class ReportLink:
     url: str
     filename: str
     section: str | None = None
+    local_path: str | None = None
 
 
 class SpecializedReportsParser(HTMLParser):
@@ -149,12 +147,20 @@ def ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def filter_reports_by_section(reports: Iterable[ReportLink], section: str | None) -> list[ReportLink]:
+    report_list = list(reports)
+    if not section:
+        return report_list
+    return [report for report in report_list if report.section == section]
+
+
 def write_manifest(reports: Iterable[ReportLink], manifest_path: Path, source_url: str) -> None:
+    report_list = list(reports)
     ensure_directory(manifest_path.parent)
     payload = {
         "source_url": source_url,
-        "report_count": len(list(reports)),
-        "reports": [asdict(report) for report in reports],
+        "report_count": len(report_list),
+        "reports": [asdict(report) for report in report_list],
     }
     manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -168,14 +174,19 @@ def parse_args() -> argparse.Namespace:
         help="Directory for downloaded PDFs",
     )
     parser.add_argument(
+        "--section",
+        default=DEFAULT_SECTION,
+        help="Section heading to keep from the ICO page",
+    )
+    parser.add_argument(
         "--manifest-path",
         default=str(DEFAULT_OUTPUT_DIR / "reports.json"),
         help="Path for the JSON manifest",
     )
     parser.add_argument(
-        "--download",
+        "--manifest-only",
         action="store_true",
-        help="Download discovered PDFs to the output directory",
+        help="Only write the JSON manifest and skip PDF downloads",
     )
     parser.add_argument("--limit", type=int, default=None, help="Limit number of PDFs")
     parser.add_argument("--timeout", type=int, default=30, help="Request timeout in seconds")
@@ -194,7 +205,10 @@ def main() -> int:
 
     try:
         html = fetch_text(args.url, timeout=args.timeout, insecure=args.insecure)
-        reports = extract_pdf_links(html, args.url)
+        reports = filter_reports_by_section(
+            extract_pdf_links(html, args.url),
+            args.section,
+        )
     except (HTTPError, URLError) as exc:
         print(f"Failed to fetch ICO page: {exc}", file=sys.stderr)
         return 1
@@ -202,24 +216,36 @@ def main() -> int:
     if args.limit is not None:
         reports = reports[: args.limit]
 
-    write_manifest(reports, manifest_path, args.url)
-    print(f"Discovered {len(reports)} PDF links")
-    print(f"Manifest written to {manifest_path}")
-
-    if not args.download:
-        return 0
-
-    ensure_directory(output_dir)
+    downloaded_reports: list[ReportLink] = []
     failures = 0
 
-    for report in reports:
-        destination = output_dir / report.filename
-        try:
-            download_file(report.url, destination, timeout=args.timeout, insecure=args.insecure)
-            print(f"Downloaded {destination}")
-        except (HTTPError, URLError) as exc:
-            failures += 1
-            print(f"Failed to download {report.url}: {exc}", file=sys.stderr)
+    print(f"Discovered {len(reports)} PDF links")
+
+    if args.manifest_only:
+        downloaded_reports = reports
+    else:
+        ensure_directory(output_dir)
+        for report in reports:
+            destination = output_dir / report.filename
+            try:
+                download_file(report.url, destination, timeout=args.timeout, insecure=args.insecure)
+                downloaded_reports.append(
+                    ReportLink(
+                        title=report.title,
+                        url=report.url,
+                        filename=report.filename,
+                        section=report.section,
+                        local_path=str(destination),
+                    )
+                )
+                print(f"Downloaded {destination}")
+            except (HTTPError, URLError) as exc:
+                failures += 1
+                downloaded_reports.append(report)
+                print(f"Failed to download {report.url}: {exc}", file=sys.stderr)
+
+    write_manifest(downloaded_reports, manifest_path, args.url)
+    print(f"Manifest written to {manifest_path}")
 
     return 1 if failures else 0
 

@@ -1,36 +1,97 @@
 {
   "source_url": "https://ico.org/specialized-reports/",
-  "report_count": 5,
+  "report_count": 13,
   "reports": [
     {
       "title": "Monthly Coffee Market Report \u2013 February 2026",
       "url": "http://www.ico.org/documents/cy2025-26/cmr-0226-e.pdf",
       "filename": "cmr-0226-e.pdf",
-      "section": "COFFEE MARKET REPORTS"
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0226-e.pdf"
     },
     {
       "title": "Monthly Coffee Market Report \u2013 January 2026",
       "url": "http://www.ico.org/documents/cy2025-26/cmr-0126-e.pdf",
       "filename": "cmr-0126-e.pdf",
-      "section": "COFFEE MARKET REPORTS"
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0126-e.pdf"
     },
     {
       "title": "cmr-0925-e.pdf",
       "url": "http://www.ico.org/documents/cy2024-25/cmr-0925-e.pdf",
       "filename": "cmr-0925-e.pdf",
-      "section": "COFFEE MARKET REPORTS"
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0925-e.pdf"
     },
     {
       "title": "Monthly Coffee Market Report \u2013 December 2025",
       "url": "http://www.ico.org/documents/cy2025-26/cmr-1225-e.pdf",
       "filename": "cmr-1225-e.pdf",
-      "section": "COFFEE MARKET REPORTS"
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-1225-e.pdf"
     },
     {
       "title": "Monthly Coffee Market Report \u2013 November 2025",
       "url": "http://www.ico.org/documents/cy2025-26/cmr-1125-e.pdf",
       "filename": "cmr-1125-e.pdf",
-      "section": "COFFEE MARKET REPORTS"
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-1125-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 October 2025",
+      "url": "http://www.ico.org/documents/cy2025-26/cmr-1025-e.pdf",
+      "filename": "cmr-1025-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-1025-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 August 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0825-e.pdf",
+      "filename": "cmr-0825-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0825-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 July 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0725-e.pdf",
+      "filename": "cmr-0725-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0725-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 June 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0625-e.pdf",
+      "filename": "cmr-0625-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0625-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 May 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0525-e.pdf",
+      "filename": "cmr-0525-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0525-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 April 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0425-e.pdf",
+      "filename": "cmr-0425-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0425-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 March 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0325-e.pdf",
+      "filename": "cmr-0325-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0325-e.pdf"
+    },
+    {
+      "title": "Monthly Coffee Market Report \u2013 February 2025",
+      "url": "http://www.ico.org/documents/cy2024-25/cmr-0225-e.pdf",
+      "filename": "cmr-0225-e.pdf",
+      "section": "COFFEE MARKET REPORTS",
+      "local_path": "data/raw/ico/specialized-reports/cmr-0225-e.pdf"
     }
   ]
 }
