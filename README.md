@@ -8,6 +8,11 @@ Usage:
 python3 scripts/scrape_ico_specialized_reports.py
 python3 scripts/scrape_ico_specialized_reports.py --insecure
 python3 scripts/scrape_ico_specialized_reports.py --manifest-only
+python3 scripts/extract_report_text.py
+python3 scripts/chunk_reports.py
+python3 scripts/build_vector_index.py
+python3 scripts/query_index.py "global coffee demand"
+python3 app/app.py "arabica supply risk"
 python3 -m unittest discover -s tests
 ```
 
@@ -19,3 +24,10 @@ Default outputs:
 Default scope:
 
 - Only the `COFFEE MARKET REPORTS` section is scraped and downloaded
+
+Pipeline outputs:
+
+- `data/processed/ico/extracted_text/reports.jsonl`
+- `data/processed/ico/extracted_text/*.json`
+- `data/processed/ico/chunks/chunks.jsonl`
+- `data/processed/ico/index/tfidf_index.pkl`
