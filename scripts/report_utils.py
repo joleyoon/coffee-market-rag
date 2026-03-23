@@ -15,11 +15,41 @@ MONTH_TO_NUMBER = {
     if month
 }
 
+COMMON_BROKEN_WORDS = {
+    "driver s": "drivers",
+    "outlook s": "outlooks",
+    "continue d": "continued",
+    "continuedthe": "continued the",
+    "stabili zation": "stabilization",
+    "de creased": "decreased",
+    "exp anded": "expanded",
+    "aff ected": "affected",
+    "affect ing": "affecting",
+    "ﬁ": "fi",
+    "ﬂ": "fl",
+    "ha s": "has",
+    "b oth": "both",
+    "a n": "an",
+    "markeda": "marked a",
+    "I -CIP": "I-CIP",
+}
+
 
 def clean_text(value: str) -> str:
     value = value.replace("\x00", " ")
+    value = value.replace("\u00ad", "")
+    value = value.replace("–", "-")
+    value = value.replace("—", "-")
+    value = value.replace("\n", " ")
     value = re.sub(r"[ \t]+", " ", value)
-    value = re.sub(r"\n{3,}", "\n\n", value)
+    value = re.sub(r"(\w)\s+-\s+(\w)", r"\1-\2", value)
+    value = re.sub(r"(\w)-\s+(\w)", r"\1\2", value)
+    value = re.sub(r"(\w)\s+([,.;:%])", r"\1\2", value)
+    value = re.sub(r"\b([A-Za-z])\s+([A-Za-z]{2,})\b", r"\1\2", value)
+    value = re.sub(r"\b([A-Za-z]{2,})\s+([A-Za-z])\b", r"\1\2", value)
+    for broken, fixed in COMMON_BROKEN_WORDS.items():
+        value = value.replace(broken, fixed)
+    value = re.sub(r"\s+", " ", value)
     return value.strip()
 
 
