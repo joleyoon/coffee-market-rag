@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.query_index import load_index, search_index
+from scripts.report_utils import clean_text
 
 
 DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
@@ -33,8 +34,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def split_sentences(text: str) -> list[str]:
-    normalized = re.sub(r"\s*•\s*", ". ", text.strip())
-    normalized = normalized.replace("\n", " ")
+    normalized = clean_text(re.sub(r"\s*•\s*", ". ", text.strip()))
     sentences = re.split(r"(?<=[.!?])\s+", normalized)
     return [sentence.strip() for sentence in sentences if sentence.strip()]
 
@@ -47,7 +47,7 @@ def query_terms(query: str) -> set[str]:
     return {
         term
         for term in re.findall(r"[a-zA-Z]{3,}", query.lower())
-        if term not in {"what", "which", "where", "from", "with", "that", "have", "this"}
+        if term not in {"what", "which", "where", "from", "with", "that", "have", "this", "recently"}
     }
 
 
@@ -58,9 +58,38 @@ def sentence_score(sentence: str, query: str, retrieval_score: float) -> float:
     return retrieval_score + (overlap * 0.02)
 
 
+def extract_price_declines(text: str) -> list[tuple[str, float, str]]:
+    candidates: list[tuple[str, float, str]] = []
+    cleaned = clean_text(text)
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+
+    for sentence in sentences:
+        paired_match = re.search(
+            r"Colombian Milds.? and Other Milds.? prices (?:retracted|decreased|declined) ([\d.]+)% and ([\d.]+)%",
+            sentence,
+            re.IGNORECASE,
+        )
+        if paired_match:
+            candidates.append(("Colombian Milds", float(paired_match.group(1)), sentence))
+            candidates.append(("Other Milds", float(paired_match.group(2)), sentence))
+
+        single_patterns = [
+            ("Brazilian Naturals", r"Brazilian Naturals.? prices (?:shrank|decreased|declined|fell) ([\d.]+)%"),
+            ("Robustas", r"Robustas (?:declined|decreased|fell|contracted) by ([\d.]+)%"),
+            ("Colombian Milds", r"Colombian Milds.? prices (?:retracted|decreased|declined|fell) ([\d.]+)%"),
+            ("Other Milds", r"Other Milds.? prices (?:retracted|decreased|declined|fell) ([\d.]+)%"),
+        ]
+        for label, pattern in single_patterns:
+            for match in re.finditer(pattern, sentence, re.IGNORECASE):
+                candidates.append((label, float(match.group(1)), sentence))
+
+    return candidates
+
+
 def clean_candidate_sentence(sentence: str) -> str:
     sentence = re.sub(r"Coffee Market Report\s*[–-]\s*[A-Za-z]+\s+\d{4}\s*\d*", "", sentence)
     sentence = re.sub(r"Figure\s+[A-Za-z0-9:.\- ]+", "", sentence)
+    sentence = re.sub(r"^[-:;,.\s]+", "", sentence)
     sentence = re.sub(r"\s+", " ", sentence)
     return sentence.strip(" -")
 
@@ -80,10 +109,28 @@ def is_usable_sentence(sentence: str) -> bool:
     numeric_tokens = sum(bool(re.fullmatch(r"[\d./%-]+", word)) for word in words)
     if numeric_tokens > 4:
         return False
+    if sentence.endswith(":"):
+        return False
     return True
 
 
-def build_answer(results: list[dict], query: str, max_sentences: int) -> tuple[list[str], list[str]]:
+def build_answer(results: list[dict], query: str, max_sentences: int) -> tuple[str | None, list[str], list[str]]:
+    query_lower = query.lower()
+
+    if ("steepest" in query_lower or "worst" in query_lower) and any(
+        phrase in query_lower for phrase in {"price decline", "price performance", "performed worst", "performing worst"}
+    ):
+        decline_candidates: list[tuple[str, float, str, str]] = []
+        for result in results:
+            source = f"{result['title']}, page {result['page_number']}"
+            for label, percentage, sentence in extract_price_declines(result["chunk_text"]):
+                decline_candidates.append((label, percentage, sentence, source))
+
+        if decline_candidates:
+            label, percentage, sentence, source = max(decline_candidates, key=lambda item: item[1])
+            direct_answer = f"{label} had the steepest price decline at {percentage:.1f}%."
+            return direct_answer, [sentence], [source]
+
     ranked_sentences: list[tuple[float, str, str]] = []
 
     for result in results:
@@ -113,7 +160,9 @@ def build_answer(results: list[dict], query: str, max_sentences: int) -> tuple[l
         if len(selected_sentences) >= max_sentences:
             break
 
-    return selected_sentences, selected_sources
+    direct_answer = selected_sentences[0] if selected_sentences else None
+    explanation = selected_sentences[1:] if len(selected_sentences) > 1 else []
+    return direct_answer, explanation, selected_sources
 
 
 def main() -> int:
@@ -125,14 +174,18 @@ def main() -> int:
     index = load_index(Path(args.index_path))
     results = search_index(index, query, args.top_k)
 
-    answer_sentences, sources = build_answer(results, query, args.max_sentences)
+    direct_answer, explanation, sources = build_answer(results, query, args.max_sentences)
 
     print(f"Question: {query}\n")
     print("Answer:")
-    if answer_sentences:
-        print(" ".join(answer_sentences))
+    if direct_answer:
+        print(direct_answer)
     else:
         print("The current index did not return enough evidence to generate a concise answer.")
+
+    if explanation:
+        print("\nWhy:")
+        print(" ".join(explanation))
 
     if sources:
         print("\nSources:")
