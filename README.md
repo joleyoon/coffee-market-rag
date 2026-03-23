@@ -13,6 +13,7 @@ python3 scripts/chunk_reports.py
 python3 scripts/build_vector_index.py
 python3 scripts/query_index.py "global coffee demand"
 python3 app/app.py "arabica supply risk"
+python3 app/app.py --serve
 python3 -m unittest discover -s tests
 ```
 
@@ -31,3 +32,8 @@ Pipeline outputs:
 - `data/processed/ico/extracted_text/*.json`
 - `data/processed/ico/chunks/chunks.jsonl`
 - `data/processed/ico/index/tfidf_index.pkl`
+
+Web app:
+
+- Run `python3 app/app.py --serve`
+- Open `http://127.0.0.1:8000`

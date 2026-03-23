@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Tiny CLI demo for querying the coffee market index."""
+"""CLI and web app for the Coffee Market Intelligence Assistant."""
 
 from __future__ import annotations
 
 import argparse
+import html
+import json
+import mimetypes
 import re
 import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -17,6 +22,13 @@ from scripts.report_utils import clean_text
 
 
 DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
+STATIC_DIR = ROOT / "app" / "static"
+DEFAULT_SUGGESTIONS = [
+    "Which coffee category had the steepest price decline in February 2026?",
+    "What factors pushed coffee prices down in early 2026?",
+    "What does the ICO say about Brazil's supply outlook?",
+    "Which regions showed weaker export performance recently?",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,6 +41,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print the retrieved supporting snippets after the answer",
     )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Run the chatbot website locally instead of the CLI view",
+    )
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("query", nargs="*")
     return parser.parse_args()
 
@@ -107,9 +126,7 @@ def is_usable_sentence(sentence: str) -> bool:
     if letter_count == 0 or digit_count > letter_count:
         return False
     numeric_tokens = sum(bool(re.fullmatch(r"[\d./%-]+", word)) for word in words)
-    if numeric_tokens > 4:
-        return False
-    if sentence.endswith(":"):
+    if numeric_tokens > 4 or sentence.endswith(":"):
         return False
     return True
 
@@ -165,40 +182,261 @@ def build_answer(results: list[dict], query: str, max_sentences: int) -> tuple[s
     return direct_answer, explanation, selected_sources
 
 
+def sources_from_results(results: list[dict], selected_sources: list[str]) -> list[dict]:
+    source_map = {
+        f"{result['title']}, page {result['page_number']}": {
+            "title": result["title"],
+            "page_number": result["page_number"],
+            "report_id": result["report_id"],
+            "published_date": result.get("published_date"),
+            "source_url": result["source_url"],
+        }
+        for result in results
+    }
+    return [source_map[source] for source in selected_sources if source in source_map]
+
+
+def answer_query(index: dict, query: str, top_k: int, max_sentences: int) -> dict:
+    results = search_index(index, query, top_k)
+    direct_answer, explanation, selected_sources = build_answer(results, query, max_sentences)
+
+    return {
+        "query": query,
+        "answer": direct_answer,
+        "why": explanation,
+        "sources": sources_from_results(results, selected_sources),
+        "results": [
+            {
+                "title": result["title"],
+                "page_number": result["page_number"],
+                "score": round(result["score"], 4),
+                "chunk_text": result["chunk_text"][:500].strip(),
+            }
+            for result in results
+        ],
+    }
+
+
+def print_cli_response(payload: dict, show_context: bool) -> None:
+    print(f"Question: {payload['query']}\n")
+    print("Answer:")
+    print(payload["answer"] or "The current index did not return enough evidence to generate a concise answer.")
+
+    if payload["why"]:
+        print("\nWhy:")
+        print(" ".join(payload["why"]))
+
+    if payload["sources"]:
+        print("\nSources:")
+        for source in payload["sources"]:
+            print(f"- {source['title']}, page {source['page_number']}")
+
+    if show_context and payload["results"]:
+        print("\nSupporting Chunks:")
+        for rank, result in enumerate(payload["results"], start=1):
+            print(f"[{rank}] {result['title']} (page {result['page_number']}, score={result['score']:.4f})")
+            print(result["chunk_text"])
+            print()
+
+
+def app_metrics(index: dict) -> dict:
+    chunks = index["chunks"]
+    report_ids = {chunk["report_id"] for chunk in chunks}
+    dates = sorted(chunk["published_date"] for chunk in chunks if chunk.get("published_date"))
+    return {
+        "report_count": len(report_ids),
+        "chunk_count": len(chunks),
+        "start_period": dates[0][:7] if dates else "n/a",
+        "end_period": dates[-1][:7] if dates else "n/a",
+    }
+
+
+def build_homepage(metrics: dict) -> bytes:
+    config = {
+        "suggestions": DEFAULT_SUGGESTIONS,
+        "reportCount": metrics["report_count"],
+        "chunkCount": metrics["chunk_count"],
+    }
+
+    html_page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coffee Market Intelligence Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <aside class="hero-panel">
+      <div class="hero-mark">CM</div>
+      <p class="eyebrow">ICO REPORTS / RAG PROTOTYPE</p>
+      <h1>Coffee Market Intelligence Assistant</h1>
+      <p class="hero-copy">
+        Ask grounded questions across ICO Coffee Market Reports and get a direct answer, a short explanation, and cited report pages.
+      </p>
+
+      <div class="hero-stats">
+        <article class="stat-card">
+          <span class="stat-label">Coverage</span>
+          <strong class="stat-value">{metrics['report_count']} reports</strong>
+          <p>{metrics['start_period']} to {metrics['end_period']}</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Retrieval Layer</span>
+          <strong class="stat-value">{metrics['chunk_count']} chunks</strong>
+          <p>ICO coffee market report passages indexed locally</p>
+        </article>
+      </div>
+
+      <section class="suggestion-panel">
+        <h2>Prompt Ideas</h2>
+        <div class="suggestion-list">
+          {"".join(f'<button class="suggestion-chip" data-suggestion="{html.escape(prompt)}">{html.escape(prompt)}</button>' for prompt in DEFAULT_SUGGESTIONS)}
+        </div>
+      </section>
+    </aside>
+
+    <section class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">LIVE CHAT</p>
+          <h2>Grounded in ICO market reports</h2>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          Retrieval + answer synthesis
+        </div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <form id="chat-form" class="composer">
+        <label class="composer-label" for="query-input">Ask about prices, exports, supply, weather, or country performance.</label>
+        <div class="composer-row">
+          <textarea id="query-input" name="query" rows="2" placeholder="What factors pushed coffee prices down in early 2026?"></textarea>
+          <button type="submit" id="send-button">Ask</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    window.APP_CONFIG = {json.dumps(config)};
+  </script>
+  <script src="/static/chat.js"></script>
+</body>
+</html>
+"""
+    return html_page.encode("utf-8")
+
+
+def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
+    if not file_path.exists() or not file_path.is_file():
+        handler.send_error(404)
+        return
+
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    handler.send_response(200)
+    handler.send_header("Content-Type", content_type or "application/octet-stream")
+    handler.end_headers()
+    handler.wfile.write(file_path.read_bytes())
+
+
+def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int):
+    class CoffeeHandler(BaseHTTPRequestHandler):
+        def _send_json(self, payload: dict, status: int = 200) -> None:
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _read_json(self) -> dict:
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length) if length else b"{}"
+            return json.loads(raw.decode("utf-8"))
+
+        def do_GET(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            if parsed.path == "/":
+                body = build_homepage(metrics)
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+
+            if parsed.path.startswith("/static/"):
+                relative = parsed.path.removeprefix("/static/")
+                serve_file(self, STATIC_DIR / relative)
+                return
+
+            if parsed.path == "/api/health":
+                self._send_json({"ok": True, "report_count": metrics["report_count"]})
+                return
+
+            self.send_error(404)
+
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/chat":
+                self.send_error(404)
+                return
+
+            try:
+                payload = self._read_json()
+            except json.JSONDecodeError:
+                self._send_json({"error": "Invalid JSON payload"}, status=400)
+                return
+
+            query = (payload.get("query") or "").strip()
+            if not query:
+                self._send_json({"error": "Query is required"}, status=400)
+                return
+
+            response = answer_query(index, query, top_k=top_k, max_sentences=max_sentences)
+            self._send_json(response)
+
+        def log_message(self, format: str, *args) -> None:  # noqa: A003
+            return
+
+    return CoffeeHandler
+
+
+def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
+    index = load_index(index_path)
+    metrics = app_metrics(index)
+    handler = make_handler(index, metrics, top_k, max_sentences)
+    server = ThreadingHTTPServer((host, port), handler)
+    print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server.")
+    finally:
+        server.server_close()
+
+
 def main() -> int:
     args = parse_args()
+
+    if args.serve:
+        run_server(Path(args.index_path), args.host, args.port, args.top_k, args.max_sentences)
+        return 0
+
     query = " ".join(args.query).strip()
     if not query:
         query = input("Ask about the ICO coffee market reports: ").strip()
 
     index = load_index(Path(args.index_path))
-    results = search_index(index, query, args.top_k)
-
-    direct_answer, explanation, sources = build_answer(results, query, args.max_sentences)
-
-    print(f"Question: {query}\n")
-    print("Answer:")
-    if direct_answer:
-        print(direct_answer)
-    else:
-        print("The current index did not return enough evidence to generate a concise answer.")
-
-    if explanation:
-        print("\nWhy:")
-        print(" ".join(explanation))
-
-    if sources:
-        print("\nSources:")
-        for source in sources:
-            print(f"- {source}")
-
-    if args.show_context:
-        print("\nSupporting Chunks:")
-        for rank, result in enumerate(results, start=1):
-            print(f"[{rank}] {result['title']} (page {result['page_number']}, score={result['score']:.4f})")
-            print(result["chunk_text"][:500].strip())
-            print()
-
+    payload = answer_query(index, query, top_k=args.top_k, max_sentences=args.max_sentences)
+    print_cli_response(payload, args.show_context)
     return 0
 
 
