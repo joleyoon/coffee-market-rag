@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coffee Market Intelligence Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/style.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <aside class="hero-panel">
+      <div class="hero-mark">CM</div>
+      <p class="eyebrow">ICO REPORTS / STATIC PREVIEW</p>
+      <h1>Coffee Market Intelligence Assistant</h1>
+      <p class="hero-copy">
+        This hosted page shows the visual shell of the chatbot. The live retrieval backend still runs locally, but the design, prompts, and interaction model are visible here.
+      </p>
+
+      <div class="hero-stats">
+        <article class="stat-card">
+          <span class="stat-label">Coverage</span>
+          <strong class="stat-value">13 reports</strong>
+          <p>2025-02 to 2026-02</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Retrieval Layer</span>
+          <strong class="stat-value">222 chunks</strong>
+          <p>Indexed ICO coffee market report passages</p>
+        </article>
+      </div>
+
+      <section class="suggestion-panel">
+        <h2>Prompt Ideas</h2>
+        <div class="suggestion-list">
+          <button class="suggestion-chip" data-suggestion="Which coffee category had the steepest price decline in February 2026?">Which coffee category had the steepest price decline in February 2026?</button>
+          <button class="suggestion-chip" data-suggestion="What factors pushed coffee prices down in early 2026?">What factors pushed coffee prices down in early 2026?</button>
+          <button class="suggestion-chip" data-suggestion="What does the ICO say about Brazil's supply outlook?">What does the ICO say about Brazil's supply outlook?</button>
+          <button class="suggestion-chip" data-suggestion="Which regions showed weaker export performance recently?">Which regions showed weaker export performance recently?</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">GITHUB PAGES</p>
+          <h2>Static chatbot preview</h2>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          UI preview only
+        </div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <form id="chat-form" class="composer">
+        <label class="composer-label" for="query-input">Try the interaction flow here. For live answers, run the Python server locally.</label>
+        <div class="composer-row">
+          <textarea id="query-input" name="query" rows="2" placeholder="What factors pushed coffee prices down in early 2026?"></textarea>
+          <button type="submit" id="send-button">Ask</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    window.APP_CONFIG = {
+      mode: "static",
+      reportCount: 13,
+      chunkCount: 222,
+      localRunCommand: "python3 app/app.py --serve",
+      suggestions: [
+        "Which coffee category had the steepest price decline in February 2026?",
+        "What factors pushed coffee prices down in early 2026?",
+        "What does the ICO say about Brazil's supply outlook?",
+        "Which regions showed weaker export performance recently?"
+      ]
+    };
+  </script>
+  <script src="./static/chat.js"></script>
+</body>
+</html>

@@ -253,9 +253,11 @@ def app_metrics(index: dict) -> dict:
 
 def build_homepage(metrics: dict) -> bytes:
     config = {
+        "mode": "live",
         "suggestions": DEFAULT_SUGGESTIONS,
         "reportCount": metrics["report_count"],
         "chunkCount": metrics["chunk_count"],
+        "localRunCommand": "python3 app/app.py --serve",
     }
 
     html_page = f"""<!DOCTYPE html>
