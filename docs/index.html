@@ -13,10 +13,10 @@
   <div class="page-shell">
     <aside class="hero-panel">
       <div class="hero-mark">CM</div>
-      <p class="eyebrow">ICO REPORTS / STATIC PREVIEW</p>
+      <p class="eyebrow">ICO REPORTS / CLIENT-SIDE RETRIEVAL</p>
       <h1>Coffee Market Intelligence Assistant</h1>
       <p class="hero-copy">
-        This hosted page shows the visual shell of the chatbot. The live retrieval backend still runs locally, but the design, prompts, and interaction model are visible here.
+        This hosted version runs a lightweight client-side retrieval flow directly in the browser, so the chatbot can answer from the indexed ICO report chunks even on GitHub Pages.
       </p>
 
       <div class="hero-stats">
@@ -47,18 +47,18 @@
       <header class="chat-header">
         <div>
           <p class="eyebrow">GITHUB PAGES</p>
-          <h2>Static chatbot preview</h2>
+          <h2>Client-side coffee chatbot</h2>
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          UI preview only
+          Static retrieval live
         </div>
       </header>
 
       <div id="messages" class="messages"></div>
 
       <form id="chat-form" class="composer">
-        <label class="composer-label" for="query-input">Try the interaction flow here. For live answers, run the Python server locally.</label>
+        <label class="composer-label" for="query-input">Ask a market question. This version searches a prebuilt report index in the browser.</label>
         <div class="composer-row">
           <textarea id="query-input" name="query" rows="2" placeholder="What factors pushed coffee prices down in early 2026?"></textarea>
           <button type="submit" id="send-button">Ask</button>
@@ -69,9 +69,10 @@
 
   <script>
     window.APP_CONFIG = {
-      mode: "static",
+      mode: "static-search",
       reportCount: 13,
       chunkCount: 222,
+      dataUrl: "./data/search-data.json",
       localRunCommand: "python3 app/app.py --serve",
       suggestions: [
         "Which coffee category had the steepest price decline in February 2026?",
