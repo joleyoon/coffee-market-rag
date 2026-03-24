@@ -31,6 +31,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build static search data
+        run: python3 scripts/export_static_search_data.py
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
