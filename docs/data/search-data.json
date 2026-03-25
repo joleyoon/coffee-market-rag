@@ -2000,5 +2000,519 @@
       "page_number": 12,
       "chunk_text": "production. It should be noted that while estimates for coffee year production are created for each individual country, these are made for the purpose of creating aconsistent aggregated supply -demand balance for analytical purposes and does not represent the producti on occurring on the ground within the individual countries. Note: Materials provided may be used, reproduced, or transmitted, in whole or in part, in any form or by any means, electronic or mechanical, including photocopying, recording or the use of any information storage and retrieval system, if the International Coffee Organization (ICO) is clearly acknowledged as the source. * * * * *"
     }
-  ]
+  ],
+  "trend_data": {
+    "source_report": {
+      "report_id": "cmr-0226-e",
+      "title": "Monthly Coffee Market Report \u2013 February 2026",
+      "published_date": "2026-02-01",
+      "source_url": "http://www.ico.org/documents/cy2025-26/cmr-0226-e.pdf"
+    },
+    "series": {
+      "ico_composite": {
+        "label": "ICO Composite",
+        "unit": "US cents/lb",
+        "color": "#82c694",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 347.85
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 335.76
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 334.41
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 295.06
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 259.31
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 297.05
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 324.62
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 326.38
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 330.44
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 304.68
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 296.89
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 267.57
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 1.8
+          }
+        ]
+      },
+      "colombian_milds": {
+        "label": "Colombian Milds",
+        "unit": "US cents/lb",
+        "color": "#f0bf78",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 404.97
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 394.14
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 395.59
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 360.08
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 322.37
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 366.72
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 403.77
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 403.25
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 408.75
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 382.32
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 371.59
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 330.89
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 0.5
+          }
+        ]
+      },
+      "other_milds": {
+        "label": "Other Milds",
+        "unit": "US cents/lb",
+        "color": "#f5e7c3",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 404.02
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 392.84
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 397.84
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 363.16
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 325.5
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 366.32
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 400.21
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 403.79
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 410.31
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 381.14
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 363.94
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 321.35
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 1.4
+          }
+        ]
+      },
+      "brazilian_naturals": {
+        "label": "Brazilian Naturals",
+        "unit": "US cents/lb",
+        "color": "#86bbf0",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 392.48
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 378.27
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 380.02
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 338.53
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 297.04
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 336.88
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 374.91
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 373.47
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 380.17
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 355.38
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 343.77
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 308.62
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 1.5
+          }
+        ]
+      },
+      "robustas": {
+        "label": "Robustas",
+        "unit": "US cents/lb",
+        "color": "#d97852",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 257.61
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 246.39
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 237.76
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 196.21
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 167.19
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 199.13
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 210.85
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 215.06
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 214.91
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 190.53
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 192.52
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 179.73
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 2.4
+          }
+        ]
+      },
+      "new_york": {
+        "label": "New York",
+        "unit": "US cents/lb",
+        "color": "#c4a1ff",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 382.75
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 370.37
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 368.21
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 329.56
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 289.17
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 328.57
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 366.31
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 366.0
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 373.57
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 347.71
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 334.99
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 288.76
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 1.1
+          }
+        ]
+      },
+      "london": {
+        "label": "London",
+        "unit": "US cents/lb",
+        "color": "#9dd3c8",
+        "points": [
+          {
+            "label": "Mar-25",
+            "date": "2025-03-01",
+            "value": 247.63
+          },
+          {
+            "label": "Apr-25",
+            "date": "2025-04-01",
+            "value": 235.69
+          },
+          {
+            "label": "May-25",
+            "date": "2025-05-01",
+            "value": 224.63
+          },
+          {
+            "label": "Jun-25",
+            "date": "2025-06-01",
+            "value": 183.21
+          },
+          {
+            "label": "Jul-25",
+            "date": "2025-07-01",
+            "value": 153.43
+          },
+          {
+            "label": "Aug-25",
+            "date": "2025-08-01",
+            "value": 181.43
+          },
+          {
+            "label": "Sep-25",
+            "date": "2025-09-01",
+            "value": 197.56
+          },
+          {
+            "label": "Oct-25",
+            "date": "2025-10-01",
+            "value": 202.16
+          },
+          {
+            "label": "Nov-25",
+            "date": "2025-11-01",
+            "value": 202.33
+          },
+          {
+            "label": "Dec-25",
+            "date": "2025-12-01",
+            "value": 178.87
+          },
+          {
+            "label": "Jan-26",
+            "date": "2026-01-01",
+            "value": 180.23
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 166.06
+          },
+          {
+            "label": "Feb-26",
+            "date": "2026-02-01",
+            "value": 2.9
+          }
+        ]
+      }
+    }
+  }
 }
