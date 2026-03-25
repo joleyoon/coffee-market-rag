@@ -35,6 +35,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Build trend data
+        run: python3 scripts/export_trend_data.py
       - name: Build static search data
         run: python3 scripts/export_static_search_data.py
       - name: Setup Pages

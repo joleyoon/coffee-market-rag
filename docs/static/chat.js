@@ -85,6 +85,82 @@ function renderSources(sources) {
   `;
 }
 
+function buildSeriesPolyline(points, width, height, paddingX, paddingY, minValue, maxValue) {
+  const range = maxValue - minValue || 1;
+  return points
+    .map((point, index) => {
+      const x = paddingX + (index * (width - paddingX * 2)) / Math.max(points.length - 1, 1);
+      const y = height - paddingY - ((point.value - minValue) / range) * (height - paddingY * 2);
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
+
+function renderTrendChart(chart) {
+  if (!chart || !chart.series || chart.series.length === 0) {
+    return "";
+  }
+
+  const width = 640;
+  const height = 220;
+  const paddingX = 40;
+  const paddingY = 24;
+  const allPoints = chart.series.flatMap((series) => series.points);
+  const values = allPoints.map((point) => point.value);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const xLabels = chart.series[0].points;
+
+  const gridLines = Array.from({ length: 4 }, (_, index) => {
+    const y = paddingY + (index * (height - paddingY * 2)) / 3;
+    return `<line x1="${paddingX}" y1="${y}" x2="${width - paddingX}" y2="${y}" class="trend-grid-line" />`;
+  }).join("");
+
+  const polylines = chart.series
+    .map((series) => {
+      const points = buildSeriesPolyline(series.points, width, height, paddingX, paddingY, minValue, maxValue);
+      const lastPoint = series.points[series.points.length - 1];
+      return `
+        <polyline points="${points}" fill="none" stroke="${series.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <circle cx="${paddingX + ((series.points.length - 1) * (width - paddingX * 2)) / Math.max(series.points.length - 1, 1)}"
+                cy="${height - paddingY - ((lastPoint.value - minValue) / (maxValue - minValue || 1)) * (height - paddingY * 2)}"
+                r="4.5" fill="${series.color}"></circle>
+      `;
+    })
+    .join("");
+
+  const legend = chart.series
+    .map(
+      (series) => `
+        <span class="trend-legend-item">
+          <span class="trend-legend-dot" style="background:${series.color}"></span>
+          ${escapeHtml(series.label)}
+        </span>
+      `
+    )
+    .join("");
+
+  return `
+    <section class="trend-card">
+      <div class="trend-header">
+        <div>
+          <h3>Trend</h3>
+          <p>${escapeHtml(chart.title)}</p>
+          <span class="trend-subtitle">${escapeHtml(chart.subtitle || "")}</span>
+        </div>
+        <span class="trend-unit">${escapeHtml(chart.unit || "")}</span>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" class="trend-chart" role="img" aria-label="${escapeHtml(chart.title)}">
+        ${gridLines}
+        ${polylines}
+        <text x="${paddingX}" y="${height - 4}" class="trend-axis-label">${escapeHtml(xLabels[0].label)}</text>
+        <text x="${width - paddingX}" y="${height - 4}" text-anchor="end" class="trend-axis-label">${escapeHtml(xLabels[xLabels.length - 1].label)}</text>
+      </svg>
+      <div class="trend-legend">${legend}</div>
+    </section>
+  `;
+}
+
 function renderWhy(why) {
   if (!why || why.length === 0) {
     return "";
@@ -108,6 +184,7 @@ function renderAssistantPayload(payload) {
       <h3>Answer</h3>
       <p>${answer}</p>
     </section>
+    ${renderTrendChart(payload.trend_chart)}
     ${renderWhy(payload.why)}
     ${renderSources(payload.sources)}
   `;
@@ -342,6 +419,56 @@ function sourcesFromResults(results, sourceKeys) {
   return sourceKeys.filter((source) => sourceMap.has(source)).map((source) => sourceMap.get(source));
 }
 
+function inferTrendChart(trendData, query, answer) {
+  if (!trendData || !trendData.series) {
+    return null;
+  }
+
+  const series = trendData.series;
+  const text = `${query} ${answer || ""}`.toLowerCase();
+
+  if (["steepest price decline", "which coffee category", "performed worst", "performing worst", "compare"].some((phrase) => text.includes(phrase))) {
+    const keys = ["colombian_milds", "other_milds", "brazilian_naturals", "robustas"];
+    return {
+      title: "ICO group price trend",
+      subtitle: "Monthly average prices from the latest ICO report table",
+      unit: "US cents/lb",
+      series: keys.filter((key) => series[key]).map((key) => series[key]),
+    };
+  }
+
+  const aliases = [
+    ["robustas", ["robusta", "robustas"]],
+    ["colombian_milds", ["colombian milds"]],
+    ["other_milds", ["other milds"]],
+    ["brazilian_naturals", ["brazilian naturals", "brazilian natural"]],
+    ["new_york", ["new york"]],
+    ["london", ["london"]],
+  ];
+
+  for (const [key, terms] of aliases) {
+    if (terms.some((term) => text.includes(term)) && series[key]) {
+      return {
+        title: `${series[key].label} trend`,
+        subtitle: "Monthly average prices from the latest ICO report table",
+        unit: series[key].unit,
+        series: [series[key]],
+      };
+    }
+  }
+
+  if (["price", "prices", "i-cip", "composite", "market performance", "decline"].some((keyword) => text.includes(keyword)) && series.ico_composite) {
+    return {
+      title: "ICO Composite Indicator Price trend",
+      subtitle: "Monthly average prices from the latest ICO report table",
+      unit: series.ico_composite.unit,
+      series: [series.ico_composite],
+    };
+  }
+
+  return null;
+}
+
 async function submitQuery(query) {
   createMessage("user", `<p>${escapeHtml(query)}</p>`);
 
@@ -363,6 +490,7 @@ async function submitQuery(query) {
         answer: answerBundle.answer,
         why: answerBundle.why,
         sources: sourcesFromResults(results, answerBundle.sourceKeys),
+        trend_chart: inferTrendChart(data.trend_data, query, answerBundle.answer),
       };
       createMessage("assistant", renderAssistantPayload(payload), "browser retrieval");
       return;
