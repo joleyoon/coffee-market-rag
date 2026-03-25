@@ -289,6 +289,72 @@ textarea {
   margin-top: 0.8rem;
 }
 
+.trend-card {
+  margin-top: 0.85rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(130, 198, 148, 0.16);
+}
+
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.trend-header p {
+  margin: 0.1rem 0 0;
+  font-family: "Fraunces", serif;
+  font-size: 1rem;
+}
+
+.trend-subtitle,
+.trend-unit {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.trend-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.trend-grid-line {
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 1;
+}
+
+.trend-axis-label {
+  fill: rgba(245, 242, 234, 0.7);
+  font-size: 12px;
+  font-family: "Source Sans 3", sans-serif;
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.7rem;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: var(--muted);
+  font-size: 0.87rem;
+}
+
+.trend-legend-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+}
+
 .source-card {
   padding: 0.72rem 0.8rem;
   border-radius: 0.85rem;

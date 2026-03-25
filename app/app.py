@@ -18,10 +18,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.query_index import load_index, search_index
-from scripts.report_utils import clean_text
+from scripts.report_utils import clean_text, load_json
 
 
 DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
+DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
 DEFAULT_SUGGESTIONS = [
     "Which coffee category had the steepest price decline in February 2026?",
@@ -196,7 +197,54 @@ def sources_from_results(results: list[dict], selected_sources: list[str]) -> li
     return [source_map[source] for source in selected_sources if source in source_map]
 
 
-def answer_query(index: dict, query: str, top_k: int, max_sentences: int) -> dict:
+def infer_trend_chart(trend_data: dict | None, query: str, answer: str | None) -> dict | None:
+    if not trend_data:
+        return None
+
+    series = trend_data.get("series", {})
+    text = f"{query} {answer or ''}".lower()
+
+    if any(phrase in text for phrase in {"steepest price decline", "which coffee category", "performed worst", "performing worst", "compare"}):
+        keys = ["colombian_milds", "other_milds", "brazilian_naturals", "robustas"]
+        return {
+            "title": "ICO group price trend",
+            "subtitle": "Monthly average prices from the latest ICO report table",
+            "unit": "US cents/lb",
+            "series": [series[key] for key in keys if key in series],
+        }
+
+    series_aliases = [
+        ("robustas", ("robusta", "robustas")),
+        ("colombian_milds", ("colombian milds",)),
+        ("other_milds", ("other milds",)),
+        ("brazilian_naturals", ("brazilian naturals", "brazilian natural")),
+        ("new_york", ("new york",)),
+        ("london", ("london",)),
+    ]
+
+    for key, aliases in series_aliases:
+        if any(alias in text for alias in aliases) and key in series:
+            return {
+                "title": series[key]["label"] + " trend",
+                "subtitle": "Monthly average prices from the latest ICO report table",
+                "unit": series[key]["unit"],
+                "series": [series[key]],
+            }
+
+    if any(keyword in text for keyword in {"price", "prices", "i-cip", "composite", "market performance", "decline"}):
+        key = "ico_composite"
+        if key in series:
+            return {
+                "title": "ICO Composite Indicator Price trend",
+                "subtitle": "Monthly average prices from the latest ICO report table",
+                "unit": series[key]["unit"],
+                "series": [series[key]],
+            }
+
+    return None
+
+
+def answer_query(index: dict, query: str, top_k: int, max_sentences: int, trend_data: dict | None = None) -> dict:
     results = search_index(index, query, top_k)
     direct_answer, explanation, selected_sources = build_answer(results, query, max_sentences)
 
@@ -205,6 +253,7 @@ def answer_query(index: dict, query: str, top_k: int, max_sentences: int) -> dic
         "answer": direct_answer,
         "why": explanation,
         "sources": sources_from_results(results, selected_sources),
+        "trend_chart": infer_trend_chart(trend_data, query, direct_answer),
         "results": [
             {
                 "title": result["title"],
@@ -258,6 +307,7 @@ def build_homepage(metrics: dict) -> bytes:
         "reportCount": metrics["report_count"],
         "chunkCount": metrics["chunk_count"],
         "localRunCommand": "python3 app/app.py --serve",
+        "trendDataUrl": "/static/trend-data.json",
     }
 
     html_page = f"""<!DOCTYPE html>
@@ -348,7 +398,7 @@ def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
     handler.wfile.write(file_path.read_bytes())
 
 
-def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int):
+def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, trend_data: dict | None):
     class CoffeeHandler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = 200) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -402,7 +452,7 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int):
                 self._send_json({"error": "Query is required"}, status=400)
                 return
 
-            response = answer_query(index, query, top_k=top_k, max_sentences=max_sentences)
+            response = answer_query(index, query, top_k=top_k, max_sentences=max_sentences, trend_data=trend_data)
             self._send_json(response)
 
         def log_message(self, format: str, *args) -> None:  # noqa: A003
@@ -414,7 +464,8 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int):
 def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
     index = load_index(index_path)
     metrics = app_metrics(index)
-    handler = make_handler(index, metrics, top_k, max_sentences)
+    trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
+    handler = make_handler(index, metrics, top_k, max_sentences, trend_data)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
     try:
@@ -437,7 +488,8 @@ def main() -> int:
         query = input("Ask about the ICO coffee market reports: ").strip()
 
     index = load_index(Path(args.index_path))
-    payload = answer_query(index, query, top_k=args.top_k, max_sentences=args.max_sentences)
+    trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
+    payload = answer_query(index, query, top_k=args.top_k, max_sentences=args.max_sentences, trend_data=trend_data)
     print_cli_response(payload, args.show_context)
     return 0
 
