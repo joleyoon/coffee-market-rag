@@ -17,6 +17,14 @@ python3 app/app.py --serve
 python3 -m unittest discover -s tests
 ```
 
+CI:
+
+- `.github/workflows/ci.yml` runs on every push and on pull requests targeting `main`
+- It installs the pinned dependencies in `requirements.txt`
+- It runs the unit test suite for retrieval and preprocessing helpers
+- It rebuilds the TF-IDF index and smoke-tests the app CLI against that fresh index
+- To block merges until CI passes, require the `CI` status check in the GitHub branch protection rules for `main`
+
 Default outputs:
 
 - `data/raw/ico/specialized-reports/reports.json`
