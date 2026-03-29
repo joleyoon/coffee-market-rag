@@ -27,8 +27,15 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Rebuild retrieval index
-        run: python scripts/build_vector_index.py --input-path data/processed/ico/chunks/chunks.jsonl --output-path /tmp/tfidf_index.pkl
+      - name: Smoke test versioned data pipeline
+        run: |
+          python scripts/run_data_pipeline.py \
+            --skip-ingest \
+            --skip-static-export \
+            --manifest-path data/raw/ico/specialized-reports/reports.json \
+            --processed-root /tmp/processed-ico \
+            --versions-root /tmp/processed-ico/versions \
+            --latest-manifest-path /tmp/processed-ico/pipeline_manifest.json
 
       - name: Smoke test application
-        run: python app/app.py --index-path /tmp/tfidf_index.pkl "What factors pushed coffee prices down in early 2026?"
+        run: python app/app.py --index-path /tmp/processed-ico/index/tfidf_index.pkl "What factors pushed coffee prices down in early 2026?"

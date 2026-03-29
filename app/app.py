@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.query_index import load_index, search_index
+from scripts.query_index import filters_from_args, load_index, search_index
 from scripts.report_utils import clean_text, load_json
 
 
@@ -49,6 +49,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--country", action="append", default=[])
+    parser.add_argument("--coffee-type", action="append", default=[])
+    parser.add_argument("--published-after", default=None)
+    parser.add_argument("--published-before", default=None)
+    parser.add_argument("--dataset-version", default=None)
     parser.add_argument("query", nargs="*")
     return parser.parse_args()
 
@@ -191,6 +196,9 @@ def sources_from_results(results: list[dict], selected_sources: list[str]) -> li
             "report_id": result["report_id"],
             "published_date": result.get("published_date"),
             "source_url": result["source_url"],
+            "country_tags": result.get("country_tags", []),
+            "coffee_type_tags": result.get("coffee_type_tags", []),
+            "dataset_version": result.get("dataset_version"),
         }
         for result in results
     }
@@ -244,12 +252,22 @@ def infer_trend_chart(trend_data: dict | None, query: str, answer: str | None) -
     return None
 
 
-def answer_query(index: dict, query: str, top_k: int, max_sentences: int, trend_data: dict | None = None) -> dict:
-    results = search_index(index, query, top_k)
+def answer_query(
+    index: dict,
+    query: str,
+    top_k: int,
+    max_sentences: int,
+    trend_data: dict | None = None,
+    filters: dict | None = None,
+) -> dict:
+    results = search_index(index, query, top_k, filters=filters)
     direct_answer, explanation, selected_sources = build_answer(results, query, max_sentences)
+    index_metadata = index.get("metadata", {})
 
     return {
         "query": query,
+        "filters": filters or {},
+        "dataset_version": index_metadata.get("dataset_version"),
         "answer": direct_answer,
         "why": explanation,
         "sources": sources_from_results(results, selected_sources),
@@ -259,6 +277,9 @@ def answer_query(index: dict, query: str, top_k: int, max_sentences: int, trend_
                 "title": result["title"],
                 "page_number": result["page_number"],
                 "score": round(result["score"], 4),
+                "published_date": result.get("published_date"),
+                "country_tags": result.get("country_tags", []),
+                "coffee_type_tags": result.get("coffee_type_tags", []),
                 "chunk_text": result["chunk_text"][:500].strip(),
             }
             for result in results
@@ -292,11 +313,13 @@ def app_metrics(index: dict) -> dict:
     chunks = index["chunks"]
     report_ids = {chunk["report_id"] for chunk in chunks}
     dates = sorted(chunk["published_date"] for chunk in chunks if chunk.get("published_date"))
+    index_metadata = index.get("metadata", {})
     return {
         "report_count": len(report_ids),
         "chunk_count": len(chunks),
-        "start_period": dates[0][:7] if dates else "n/a",
-        "end_period": dates[-1][:7] if dates else "n/a",
+        "start_period": index_metadata.get("start_period") or (dates[0][:7] if dates else "n/a"),
+        "end_period": index_metadata.get("end_period") or (dates[-1][:7] if dates else "n/a"),
+        "dataset_version": index_metadata.get("dataset_version") or "legacy",
     }
 
 
@@ -306,6 +329,7 @@ def build_homepage(metrics: dict) -> bytes:
         "suggestions": DEFAULT_SUGGESTIONS,
         "reportCount": metrics["report_count"],
         "chunkCount": metrics["chunk_count"],
+        "datasetVersion": metrics["dataset_version"],
         "localRunCommand": "python3 app/app.py --serve",
         "trendDataUrl": "/static/trend-data.json",
     }
@@ -360,7 +384,7 @@ def build_homepage(metrics: dict) -> bytes:
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          Retrieval + answer synthesis
+          Retrieval + answer synthesis / {html.escape(metrics['dataset_version'])}
         </div>
       </header>
 
@@ -430,7 +454,18 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
                 return
 
             if parsed.path == "/api/health":
-                self._send_json({"ok": True, "report_count": metrics["report_count"]})
+                self._send_json(
+                    {
+                        "ok": True,
+                        "report_count": metrics["report_count"],
+                        "chunk_count": metrics["chunk_count"],
+                        "dataset_version": metrics["dataset_version"],
+                        "coverage": {
+                            "start_period": metrics["start_period"],
+                            "end_period": metrics["end_period"],
+                        },
+                    }
+                )
                 return
 
             self.send_error(404)
@@ -452,7 +487,15 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
                 self._send_json({"error": "Query is required"}, status=400)
                 return
 
-            response = answer_query(index, query, top_k=top_k, max_sentences=max_sentences, trend_data=trend_data)
+            filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else None
+            response = answer_query(
+                index,
+                query,
+                top_k=top_k,
+                max_sentences=max_sentences,
+                trend_data=trend_data,
+                filters=filters,
+            )
             self._send_json(response)
 
         def log_message(self, format: str, *args) -> None:  # noqa: A003
@@ -489,7 +532,14 @@ def main() -> int:
 
     index = load_index(Path(args.index_path))
     trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
-    payload = answer_query(index, query, top_k=args.top_k, max_sentences=args.max_sentences, trend_data=trend_data)
+    payload = answer_query(
+        index,
+        query,
+        top_k=args.top_k,
+        max_sentences=args.max_sentences,
+        trend_data=trend_data,
+        filters=filters_from_args(args),
+    )
     print_cli_response(payload, args.show_context)
     return 0
 
