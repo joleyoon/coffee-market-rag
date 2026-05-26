@@ -8,9 +8,14 @@ import html
 import json
 import mimetypes
 import re
+import subprocess
 import sys
+import threading
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,12 +29,88 @@ from scripts.report_utils import clean_text, load_json
 DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
 DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
+REFRESH_PIPELINE_SCRIPTS = [
+    "scripts/scrape_ico_specialized_reports.py",
+    "scripts/extract_report_text.py",
+    "scripts/chunk_reports.py",
+    "scripts/build_vector_index.py",
+    "scripts/export_trend_data.py",
+]
 DEFAULT_SUGGESTIONS = [
     "Which coffee category had the steepest price decline in February 2026?",
     "What factors pushed coffee prices down in early 2026?",
     "What does the ICO say about Brazil's supply outlook?",
     "Which regions showed weaker export performance recently?",
 ]
+
+
+@dataclass(frozen=True)
+class SearchSnapshot:
+    index: dict
+    metrics: dict
+    trend_data: dict | None
+
+
+@dataclass
+class LiveState:
+    snapshot: SearchSnapshot
+    last_refresh: dict = field(default_factory=lambda: {"status": "not_started"})
+    refresh_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+
+def project_path(path: Path) -> Path:
+    return path if path.is_absolute() else ROOT / path
+
+
+def load_search_snapshot(index_path: Path) -> SearchSnapshot:
+    index = load_index(project_path(index_path))
+    trend_path = project_path(DEFAULT_TREND_DATA)
+    trend_data = load_json(trend_path) if trend_path.exists() else None
+    return SearchSnapshot(index=index, metrics=app_metrics(index), trend_data=trend_data)
+
+
+def run_refresh_pipeline() -> None:
+    for script in REFRESH_PIPELINE_SCRIPTS:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / script)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            details = result.stderr.strip() or result.stdout.strip() or "no command output"
+            raise RuntimeError(f"{Path(script).name} failed: {details[-600:]}")
+
+
+def refresh_live_state(
+    state: LiveState,
+    index_path: Path,
+    pipeline_runner: Callable[[], None] = run_refresh_pipeline,
+) -> bool:
+    with state.refresh_lock:
+        started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        try:
+            pipeline_runner()
+            snapshot = load_search_snapshot(index_path)
+        except Exception as exc:
+            state.last_refresh = {
+                "status": "failed",
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "error": str(exc),
+            }
+            print(f"Coffee report refresh failed: {exc}", file=sys.stderr)
+            return False
+
+        state.snapshot = snapshot
+        state.last_refresh = {
+            "status": "succeeded",
+            "started_at": started_at,
+            "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "report_count": snapshot.metrics["report_count"],
+        }
+        print(f"Refreshed coffee reports: {snapshot.metrics['report_count']} reports indexed")
+        return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -300,7 +381,7 @@ def app_metrics(index: dict) -> dict:
     }
 
 
-def build_homepage(metrics: dict) -> bytes:
+def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
     config = {
         "mode": "live",
         "suggestions": DEFAULT_SUGGESTIONS,
@@ -308,6 +389,7 @@ def build_homepage(metrics: dict) -> bytes:
         "chunkCount": metrics["chunk_count"],
         "localRunCommand": "python3 app/app.py --serve",
         "trendDataUrl": "/static/trend-data.json",
+        "refreshStatus": refresh_status,
     }
 
     html_page = f"""<!DOCTYPE html>
@@ -398,7 +480,7 @@ def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
     handler.wfile.write(file_path.read_bytes())
 
 
-def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, trend_data: dict | None):
+def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: int):
     class CoffeeHandler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = 200) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -416,9 +498,12 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path == "/":
-                body = build_homepage(metrics)
+                refresh_live_state(state, index_path)
+                snapshot = state.snapshot
+                body = build_homepage(snapshot.metrics, state.last_refresh["status"])
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -430,7 +515,13 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
                 return
 
             if parsed.path == "/api/health":
-                self._send_json({"ok": True, "report_count": metrics["report_count"]})
+                self._send_json(
+                    {
+                        "ok": True,
+                        "report_count": state.snapshot.metrics["report_count"],
+                        "refresh": state.last_refresh,
+                    }
+                )
                 return
 
             self.send_error(404)
@@ -452,7 +543,14 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
                 self._send_json({"error": "Query is required"}, status=400)
                 return
 
-            response = answer_query(index, query, top_k=top_k, max_sentences=max_sentences, trend_data=trend_data)
+            snapshot = state.snapshot
+            response = answer_query(
+                snapshot.index,
+                query,
+                top_k=top_k,
+                max_sentences=max_sentences,
+                trend_data=snapshot.trend_data,
+            )
             self._send_json(response)
 
         def log_message(self, format: str, *args) -> None:  # noqa: A003
@@ -462,10 +560,8 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
 
 
 def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
-    index = load_index(index_path)
-    metrics = app_metrics(index)
-    trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
-    handler = make_handler(index, metrics, top_k, max_sentences, trend_data)
+    state = LiveState(load_search_snapshot(index_path))
+    handler = make_handler(state, index_path, top_k, max_sentences)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
     try:

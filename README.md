@@ -37,3 +37,10 @@ Web app:
 
 - Run `python3 app/app.py --serve`
 - Open `http://127.0.0.1:8000`
+- Each request for the live server homepage (`/`) refreshes the ICO coffee-market PDFs, extracted text, chunks, retrieval index, and trend data before rendering the page.
+- Refreshes are serialized; chat API requests continue using the last completed index while a new visitor refresh is running.
+
+GitHub Pages:
+
+- The `docs/` deployment is static and cannot run the Python scraper when a visitor arrives.
+- To refresh published static data, run the pipeline and rebuild `docs/data/search-data.json` before deploying, or host the live Python server behind the site.
