@@ -105,11 +105,7 @@ def build_series_payload(rows: list[tuple[str, list[float]]]) -> dict:
     return payload
 
 
-def main() -> int:
-    args = parse_args()
-    input_dir = Path(args.input_dir)
-    output_path = Path(args.output_path)
-
+def export_trend_data(input_dir: Path, output_path: Path) -> dict:
     report = latest_report(input_dir)
     table_block = extract_table_block(report["full_text"], "Table 1:", "Table 2:")
     rows = parse_monthly_price_rows(table_block)
@@ -126,6 +122,12 @@ def main() -> int:
 
     write_json(output_path, payload)
     print(f"Wrote trend data to {output_path}")
+    return payload
+
+
+def main() -> int:
+    args = parse_args()
+    export_trend_data(Path(args.input_dir), Path(args.output_path))
     return 0
 
 
