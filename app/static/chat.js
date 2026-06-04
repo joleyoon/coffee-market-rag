@@ -56,6 +56,16 @@ function assistantWelcome() {
   const intro = appMode === "static"
     ? `This static preview shows the chatbot surface. Run the Python app for sentence-transformers embeddings, FAISS vector search, metadata filtering, and answer synthesis.`
     : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, synthesizes a direct answer, and cites supporting pages.`;
+    ? `This is the static GitHub Pages preview of the chatbot interface. The visual layout, prompt ideas, and conversation shell are live here, but grounded retrieval still runs through the local Python server.`
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves indexed report chunks, synthesizes a direct answer, and cites the supporting pages.`;
+  const refreshWarning = appMode === "live" && config.refreshStatus === "failed"
+    ? `
+      <section>
+        <h3>Data Refresh</h3>
+        <p>The latest ICO report refresh did not complete. Answers use the last available index.</p>
+      </section>
+    `
+    : "";
 
   createMessage(
     "assistant",
@@ -69,6 +79,7 @@ function assistantWelcome() {
         <h3>Good Questions</h3>
         <p>${(config.suggestions || []).map((item) => escapeHtml(item)).join("<br />")}</p>
       </section>
+      ${refreshWarning}
     `,
     `${config.chunkCount || 0} indexed chunks`
   );
