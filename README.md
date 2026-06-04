@@ -14,14 +14,6 @@ What is included:
 - Sentence-transformers embeddings stored in a FAISS vector index
 - Backward-compatible latest aliases for the CLI app and local web app
 
-## Resume Alignment
-
-- Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.
-- Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.
-- Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.
-- Processed and embedded unstructured PDF reports for scalable semantic search and analysis.
-- Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes.
-
 ## Commands
 
 ```bash
