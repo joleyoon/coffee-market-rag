@@ -86,7 +86,7 @@ class VersionPaths:
 
     @property
     def index_path(self) -> Path:
-        return self.root / "index" / "tfidf_index.pkl"
+        return self.root / "index" / "faiss_index.pkl"
 
     @property
     def trend_path(self) -> Path:
@@ -181,7 +181,7 @@ def publish_latest_aliases(version_paths: VersionPaths, processed_root: Path = D
     ensure_directory(processed_root / "chunks")
     ensure_directory(processed_root / "trends")
 
-    shutil.copy2(version_paths.index_path, processed_root / "index" / "tfidf_index.pkl")
+    shutil.copy2(version_paths.index_path, processed_root / "index" / "faiss_index.pkl")
     shutil.copy2(version_paths.chunks_path, processed_root / "chunks" / "chunks.jsonl")
     shutil.copy2(version_paths.pipeline_manifest_path, processed_root / "pipeline_manifest.json")
 

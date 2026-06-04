@@ -6,6 +6,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+
 from scripts import build_vector_index, chunk_reports, run_data_pipeline
 from scripts.query_index import load_index, search_index
 from scripts.report_utils import load_jsonl, write_json, write_jsonl
@@ -39,6 +41,31 @@ def make_chunk(
         "ingest_status": "new",
         "chunk_text": chunk_text,
     }
+
+
+class FakeEmbeddingModel:
+    vocabulary = [
+        "brazil",
+        "rainfall",
+        "outlook",
+        "arabica",
+        "supply",
+        "vietnam",
+        "exports",
+        "robusta",
+        "shipments",
+        "accelerated",
+        "european",
+        "inventories",
+        "stocks",
+    ]
+
+    def encode(self, sentences: list[str], **_: object) -> np.ndarray:
+        rows = []
+        for sentence in sentences:
+            lowered = sentence.lower()
+            rows.append([float(lowered.count(term)) for term in self.vocabulary])
+        return np.asarray(rows, dtype=np.float32)
 
 
 class RagPipelineTests(unittest.TestCase):
@@ -115,7 +142,7 @@ class RagPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             chunks_path = tmp_path / "chunks.jsonl"
-            index_path = tmp_path / "tfidf_index.pkl"
+            index_path = tmp_path / "faiss_index.pkl"
             write_jsonl(
                 chunks_path,
                 [
@@ -145,28 +172,34 @@ class RagPipelineTests(unittest.TestCase):
                 ],
             )
 
-            with patch.object(
-                sys,
-                "argv",
-                [
-                    "build_vector_index.py",
-                    "--input-path",
-                    str(chunks_path),
-                    "--output-path",
-                    str(index_path),
-                    "--max-features",
-                    "100",
-                ],
-            ):
-                with redirect_stdout(io.StringIO()):
-                    exit_code = build_vector_index.main()
+            with patch.object(build_vector_index, "load_embedding_model", return_value=FakeEmbeddingModel()):
+                with patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "build_vector_index.py",
+                        "--input-path",
+                        str(chunks_path),
+                        "--output-path",
+                        str(index_path),
+                        "--embedding-model",
+                        "fake-model",
+                        "--max-features",
+                        "100",
+                    ],
+                ):
+                    with redirect_stdout(io.StringIO()):
+                        exit_code = build_vector_index.main()
 
             self.assertEqual(exit_code, 0)
 
             index = load_index(index_path)
-            self.assertEqual(index["matrix"].shape[0], 3)
+            self.assertEqual(index["metadata"]["embedding_backend"], "sentence-transformers+faiss")
+            self.assertEqual(index["metadata"]["embedding_model"], "fake-model")
+            self.assertEqual(index["metadata"]["embedding_text"], "metadata+chunk_text")
+            self.assertEqual(index["metadata"]["index_size"], 3)
 
-            results = search_index(index, "brazil rainfall outlook", top_k=2)
+            results = search_index(index, "brazil rainfall outlook", top_k=2, embedding_model=FakeEmbeddingModel())
 
             self.assertEqual(len(results), 2)
             self.assertEqual(results[0]["report_id"], "cmr-0226-e")
@@ -177,7 +210,7 @@ class RagPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             chunks_path = tmp_path / "chunks.jsonl"
-            index_path = tmp_path / "tfidf_index.pkl"
+            index_path = tmp_path / "faiss_index.pkl"
             write_jsonl(
                 chunks_path,
                 [
@@ -200,7 +233,13 @@ class RagPipelineTests(unittest.TestCase):
                 ],
             )
 
-            build_vector_index.build_index(load_jsonl(chunks_path), output_path=index_path, max_features=100)
+            build_vector_index.build_index(
+                load_jsonl(chunks_path),
+                output_path=index_path,
+                max_features=100,
+                embedding_model=FakeEmbeddingModel(),
+                embedding_model_name="fake-model",
+            )
             index = load_index(index_path)
 
             results = search_index(
@@ -208,6 +247,7 @@ class RagPipelineTests(unittest.TestCase):
                 "exports accelerated",
                 top_k=5,
                 filters={"countries": ["Vietnam"], "coffee_types": ["Robusta"]},
+                embedding_model=FakeEmbeddingModel(),
             )
 
             self.assertEqual(len(results), 1)
@@ -261,7 +301,13 @@ class RagPipelineTests(unittest.TestCase):
             tmp_path = Path(tmpdir)
             source_manifest_path = tmp_path / "reports.json"
             write_json(source_manifest_path, {"reports": []})
-            index_payload = build_vector_index.build_index(chunks, output_path=tmp_path / "index.pkl", max_features=100)
+            index_payload = build_vector_index.build_index(
+                chunks,
+                output_path=tmp_path / "index.pkl",
+                max_features=100,
+                embedding_model=FakeEmbeddingModel(),
+                embedding_model_name="fake-model",
+            )
 
             manifest = run_data_pipeline.build_pipeline_manifest(
                 dataset_version="20260328T000000Z",
@@ -285,6 +331,9 @@ class RagPipelineTests(unittest.TestCase):
             self.assertEqual(manifest["existing_report_ids"], ["cmr-0126-e"])
             self.assertEqual(manifest["report_count"], 2)
             self.assertEqual(manifest["chunk_count"], 2)
+            self.assertEqual(manifest["embedding_backend"], "sentence-transformers+faiss")
+            self.assertEqual(manifest["embedding_model"], "fake-model")
+            self.assertEqual(manifest["vector_index"], "IndexFlatIP")
             self.assertEqual(manifest["coffee_types"], ["Arabica", "Robusta"])
             self.assertEqual(manifest["reports"][0]["report_id"], "cmr-0226-e")
 

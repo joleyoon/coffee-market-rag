@@ -11,7 +11,16 @@ What is included:
 - Scheduled ingestion with a local Python scheduler and a GitHub Actions cron workflow
 - Versioned dataset snapshots under `data/processed/ico/versions/<dataset_version>/`
 - Metadata tagging on reports and chunks for `country`, `coffee_type`, and `date`
+- Sentence-transformers embeddings stored in a FAISS vector index
 - Backward-compatible latest aliases for the CLI app and local web app
+
+## Resume Alignment
+
+- Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.
+- Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.
+- Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.
+- Processed and embedded unstructured PDF reports for scalable semantic search and analysis.
+- Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes.
 
 ## Commands
 
@@ -37,7 +46,7 @@ Latest aliases:
 
 - `data/processed/ico/extracted_text/reports.jsonl`
 - `data/processed/ico/chunks/chunks.jsonl`
-- `data/processed/ico/index/tfidf_index.pkl`
+- `data/processed/ico/index/faiss_index.pkl`
 - `data/processed/ico/trends/trend-data.json`
 - `data/processed/ico/pipeline_manifest.json`
 
@@ -45,7 +54,7 @@ Immutable snapshot outputs:
 
 - `data/processed/ico/versions/<dataset_version>/extracted_text/reports.jsonl`
 - `data/processed/ico/versions/<dataset_version>/chunks/chunks.jsonl`
-- `data/processed/ico/versions/<dataset_version>/index/tfidf_index.pkl`
+- `data/processed/ico/versions/<dataset_version>/index/faiss_index.pkl`
 - `data/processed/ico/versions/<dataset_version>/trends/trend-data.json`
 - `data/processed/ico/versions/<dataset_version>/pipeline_manifest.json`
 

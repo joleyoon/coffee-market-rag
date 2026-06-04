@@ -38,12 +38,27 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function renderHighlightList(items) {
+  if (!items || items.length === 0) {
+    return "";
+  }
+
+  return `
+    <section>
+      <h3>Build Highlights</h3>
+      <ul class="message-list">
+        ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+}
+
 function assistantWelcome() {
   const intro = appMode === "static-search"
-    ? `This GitHub Pages version runs retrieval directly in the browser using a prebuilt chunk index from the ICO coffee market reports.`
+    ? `This GitHub Pages version uses a browser-safe static retrieval bundle. The Python app builds sentence-transformers embeddings, stores them in FAISS, and serves metadata-aware semantic search locally.`
     : appMode === "static"
-    ? `This is the static GitHub Pages preview of the chatbot interface. The visual layout, prompt ideas, and conversation shell are live here, but grounded retrieval still runs through the local Python server.`
-    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves indexed report chunks, synthesizes a direct answer, and cites the supporting pages.`;
+    ? `This static preview shows the chatbot surface. Run the Python app for sentence-transformers embeddings, FAISS vector search, metadata filtering, and answer synthesis.`
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, synthesizes a direct answer, and cites supporting pages.`;
 
   createMessage(
     "assistant",
@@ -52,6 +67,7 @@ function assistantWelcome() {
         <h3>What This Assistant Does</h3>
         <p>${intro}</p>
       </section>
+      ${renderHighlightList(config.systemHighlights)}
       <section>
         <h3>Good Questions</h3>
         <p>${(config.suggestions || []).map((item) => escapeHtml(item)).join("<br />")}</p>

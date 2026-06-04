@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Query the local TF-IDF index and print the top matching chunks."""
+"""Query the local sentence-transformers + FAISS index and print matching chunks."""
 
 from __future__ import annotations
 
@@ -8,14 +8,20 @@ import pickle
 import sys
 from pathlib import Path
 
-from sklearn.metrics.pairwise import cosine_similarity
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.embedding_utils import (
+    DEFAULT_EMBEDDING_MODEL,
+    EmbeddingModel,
+    deserialize_faiss_index,
+    encode_texts,
+    load_embedding_model,
+)
 
-DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
+
+DEFAULT_INDEX = Path("data/processed/ico/index/faiss_index.pkl")
 
 
 def listify(value: object) -> list[str]:
@@ -29,6 +35,16 @@ def listify(value: object) -> list[str]:
 def load_index(index_path: Path) -> dict:
     with index_path.open("rb") as handle:
         return pickle.load(handle)
+
+
+def index_model_name(index: dict) -> str:
+    return index.get("metadata", {}).get("embedding_model") or DEFAULT_EMBEDDING_MODEL
+
+
+def materialized_faiss_index(index: dict):
+    if "_faiss_index" not in index:
+        index["_faiss_index"] = deserialize_faiss_index(index["faiss_index"])
+    return index["_faiss_index"]
 
 
 def chunk_matches_filters(chunk: dict, filters: dict | None) -> bool:
@@ -63,25 +79,40 @@ def chunk_matches_filters(chunk: dict, filters: dict | None) -> bool:
     return True
 
 
-def search_index(index: dict, query: str, top_k: int, filters: dict | None = None) -> list[dict]:
-    vectorizer = index["vectorizer"]
-    matrix = index["matrix"]
-    chunks = index["chunks"]
+def search_index(
+    index: dict,
+    query: str,
+    top_k: int,
+    filters: dict | None = None,
+    embedding_model: EmbeddingModel | None = None,
+) -> list[dict]:
+    if top_k <= 0:
+        return []
 
-    query_vector = vectorizer.transform([query])
+    faiss_index = materialized_faiss_index(index)
+    chunks = index["chunks"]
+    model = embedding_model or load_embedding_model(index_model_name(index))
+
     allowed_positions = [position for position, chunk in enumerate(chunks) if chunk_matches_filters(chunk, filters)]
     if not allowed_positions:
         return []
 
-    filtered_matrix = matrix[allowed_positions]
-    scores = cosine_similarity(query_vector, filtered_matrix).ravel()
-    ranked_indices = scores.argsort()[::-1][:top_k]
+    query_embedding = encode_texts(model, [query], batch_size=1)
+    search_limit = len(chunks) if filters else top_k
+    scores, labels = faiss_index.search(query_embedding, min(search_limit, faiss_index.ntotal))
+    allowed_position_set = set(allowed_positions) if filters else None
 
     results: list[dict] = []
-    for position in ranked_indices:
-        chunk = dict(chunks[allowed_positions[position]])
-        chunk["score"] = float(scores[position])
+    for score, position in zip(scores[0], labels[0]):
+        if position < 0:
+            continue
+        if allowed_position_set is not None and int(position) not in allowed_position_set:
+            continue
+        chunk = dict(chunks[int(position)])
+        chunk["score"] = float(score)
         results.append(chunk)
+        if len(results) >= top_k:
+            break
     return results
 
 

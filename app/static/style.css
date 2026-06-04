@@ -120,6 +120,7 @@ textarea {
 }
 
 .stat-card,
+.system-panel,
 .suggestion-panel,
 .message {
   background: var(--panel-soft);
@@ -155,11 +156,29 @@ textarea {
   padding: 1rem 1.05rem 1.15rem;
 }
 
+.system-panel {
+  padding: 1rem 1.05rem 1.15rem;
+}
+
+.system-panel h2,
 .suggestion-panel h2 {
   margin: 0 0 0.8rem;
   font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.2rem;
+}
+
+.system-list {
+  display: grid;
+  gap: 0.52rem;
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+.system-list li::marker {
+  color: var(--green);
 }
 
 .suggestion-list {
@@ -276,6 +295,17 @@ textarea {
 
 .message p {
   margin: 0;
+}
+
+.message-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.message-list li::marker {
+  color: var(--amber);
 }
 
 .message p + p,

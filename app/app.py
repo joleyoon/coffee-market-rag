@@ -21,7 +21,7 @@ from scripts.query_index import filters_from_args, load_index, search_index
 from scripts.report_utils import clean_text, load_json
 
 
-DEFAULT_INDEX = Path("data/processed/ico/index/tfidf_index.pkl")
+DEFAULT_INDEX = Path("data/processed/ico/index/faiss_index.pkl")
 DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
 DEFAULT_SUGGESTIONS = [
@@ -29,6 +29,13 @@ DEFAULT_SUGGESTIONS = [
     "What factors pushed coffee prices down in early 2026?",
     "What does the ICO say about Brazil's supply outlook?",
     "Which regions showed weaker export performance recently?",
+]
+PROJECT_HIGHLIGHTS = [
+    "Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.",
+    "Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.",
+    "Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.",
+    "Processed and embedded unstructured PDF reports for scalable semantic search and analysis.",
+    "Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes.",
 ]
 
 
@@ -320,6 +327,9 @@ def app_metrics(index: dict) -> dict:
         "start_period": index_metadata.get("start_period") or (dates[0][:7] if dates else "n/a"),
         "end_period": index_metadata.get("end_period") or (dates[-1][:7] if dates else "n/a"),
         "dataset_version": index_metadata.get("dataset_version") or "legacy",
+        "embedding_backend": index_metadata.get("embedding_backend") or "sentence-transformers+faiss",
+        "embedding_model": index_metadata.get("embedding_model") or "sentence-transformers",
+        "vector_index": index_metadata.get("faiss_index_type") or "FAISS",
     }
 
 
@@ -330,6 +340,10 @@ def build_homepage(metrics: dict) -> bytes:
         "reportCount": metrics["report_count"],
         "chunkCount": metrics["chunk_count"],
         "datasetVersion": metrics["dataset_version"],
+        "embeddingBackend": metrics["embedding_backend"],
+        "embeddingModel": metrics["embedding_model"],
+        "vectorIndex": metrics["vector_index"],
+        "systemHighlights": PROJECT_HIGHLIGHTS,
         "localRunCommand": "python3 app/app.py --serve",
         "trendDataUrl": "/static/trend-data.json",
     }
@@ -349,10 +363,10 @@ def build_homepage(metrics: dict) -> bytes:
   <div class="page-shell">
     <aside class="hero-panel">
       <div class="hero-mark">CM</div>
-      <p class="eyebrow">ICO REPORTS / RAG PROTOTYPE</p>
+      <p class="eyebrow">ICO REPORTS / RAG SYSTEM</p>
       <h1>Coffee Market Intelligence Assistant</h1>
       <p class="hero-copy">
-        Ask grounded questions across ICO Coffee Market Reports and get a direct answer, a short explanation, and cited report pages.
+        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and generate cited market insights.
       </p>
 
       <div class="hero-stats">
@@ -362,11 +376,23 @@ def build_homepage(metrics: dict) -> bytes:
           <p>{metrics['start_period']} to {metrics['end_period']}</p>
         </article>
         <article class="stat-card">
-          <span class="stat-label">Retrieval Layer</span>
+          <span class="stat-label">Vector Search</span>
           <strong class="stat-value">{metrics['chunk_count']} chunks</strong>
-          <p>ICO coffee market report passages indexed locally</p>
+          <p>{html.escape(metrics['vector_index'])} over sentence-transformers embeddings</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Automation</span>
+          <strong class="stat-value">CI/CD</strong>
+          <p>GitHub Actions tests, smoke checks, deployment, and scheduled refreshes</p>
         </article>
       </div>
+
+      <section class="system-panel">
+        <h2>System Highlights</h2>
+        <ul class="system-list">
+          {"".join(f'<li>{html.escape(item)}</li>' for item in PROJECT_HIGHLIGHTS)}
+        </ul>
+      </section>
 
       <section class="suggestion-panel">
         <h2>Prompt Ideas</h2>
@@ -379,12 +405,12 @@ def build_homepage(metrics: dict) -> bytes:
     <section class="chat-panel">
       <header class="chat-header">
         <div>
-          <p class="eyebrow">LIVE CHAT</p>
-          <h2>Grounded in ICO market reports</h2>
+          <p class="eyebrow">LIVE RAG WORKFLOW</p>
+          <h2>Ask the embedded market index</h2>
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          Retrieval + answer synthesis / {html.escape(metrics['dataset_version'])}
+          {html.escape(metrics['embedding_backend'])} / {html.escape(metrics['dataset_version'])}
         </div>
       </header>
 
