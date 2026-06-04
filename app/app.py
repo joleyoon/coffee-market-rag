@@ -11,15 +11,11 @@ import os
 import re
 import subprocess
 import sys
-<<<<<<< HEAD
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
-=======
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
@@ -36,21 +32,11 @@ from scripts.report_utils import clean_text, load_json
 DEFAULT_INDEX = Path("data/processed/ico/index/faiss_index.pkl")
 DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
-<<<<<<< HEAD
 DEFAULT_LLM_MODEL = "gpt-5.5"
 DEFAULT_OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-=======
-REFRESH_PIPELINE_SCRIPTS = [
-    "scripts/scrape_ico_specialized_reports.py",
-    "scripts/extract_report_text.py",
-    "scripts/chunk_reports.py",
-    "scripts/build_vector_index.py",
-    "scripts/export_trend_data.py",
-]
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
 DEFAULT_SUGGESTIONS = [
-    "Which coffee category had the steepest price decline in February 2026?",
-    "What factors pushed coffee prices down in early 2026?",
+    "What changed in the latest ICO Coffee Market Report?",
+    "What factors affected coffee prices in April 2026?",
     "What does the ICO say about Brazil's supply outlook?",
     "Which regions showed weaker export performance recently?",
 ]
@@ -109,16 +95,20 @@ def load_search_snapshot(index_path: Path) -> SearchSnapshot:
 
 
 def run_refresh_pipeline() -> None:
-    for script in REFRESH_PIPELINE_SCRIPTS:
-        result = subprocess.run(
-            [sys.executable, str(ROOT / script)],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            details = result.stderr.strip() or result.stdout.strip() or "no command output"
-            raise RuntimeError(f"{Path(script).name} failed: {details[-600:]}")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "run_data_pipeline.py"),
+            "--insecure",
+            "--skip-static-export",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        details = result.stderr.strip() or result.stdout.strip() or "no command output"
+        raise RuntimeError(f"run_data_pipeline.py failed: {details[-600:]}")
 
 
 def refresh_live_state(
@@ -609,21 +599,21 @@ def app_metrics(index: dict) -> dict:
     }
 
 
-<<<<<<< HEAD
-def build_homepage(metrics: dict, llm_config: LLMConfig | None = None) -> bytes:
+def build_homepage(
+    metrics: dict,
+    refresh_status: str = "not_started",
+    llm_config: LLMConfig | None = None,
+) -> bytes:
     llm_status = "LLM enabled" if llm_config and llm_config.enabled else "LLM optional"
-=======
-def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
     config = {
         "mode": "live",
         "suggestions": DEFAULT_SUGGESTIONS,
-        "reportCount": metrics["report_count"],
-        "chunkCount": metrics["chunk_count"],
-        "datasetVersion": metrics["dataset_version"],
-        "embeddingBackend": metrics["embedding_backend"],
-        "embeddingModel": metrics["embedding_model"],
-        "vectorIndex": metrics["vector_index"],
+        "reportCount": metrics.get("report_count", 0),
+        "chunkCount": metrics.get("chunk_count", 0),
+        "datasetVersion": metrics.get("dataset_version", "legacy"),
+        "embeddingBackend": metrics.get("embedding_backend", "sentence-transformers+faiss"),
+        "embeddingModel": metrics.get("embedding_model", "sentence-transformers"),
+        "vectorIndex": metrics.get("vector_index", "FAISS"),
         "llmMode": llm_config.mode if llm_config else "auto",
         "llmModel": llm_config.model if llm_config else DEFAULT_LLM_MODEL,
         "llmEnabled": bool(llm_config and llm_config.enabled),
@@ -657,13 +647,13 @@ def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
       <div class="hero-stats">
         <article class="stat-card">
           <span class="stat-label">Coverage</span>
-          <strong class="stat-value">{metrics['report_count']} reports</strong>
-          <p>{metrics['start_period']} to {metrics['end_period']}</p>
+          <strong class="stat-value">{metrics.get('report_count', 0)} reports</strong>
+          <p>{metrics.get('start_period', 'n/a')} to {metrics.get('end_period', 'n/a')}</p>
         </article>
         <article class="stat-card">
           <span class="stat-label">Vector Search</span>
-          <strong class="stat-value">{metrics['chunk_count']} chunks</strong>
-          <p>{html.escape(metrics['vector_index'])} over sentence-transformers embeddings</p>
+          <strong class="stat-value">{metrics.get('chunk_count', 0)} chunks</strong>
+          <p>{html.escape(metrics.get('vector_index', 'FAISS'))} over sentence-transformers embeddings</p>
         </article>
         <article class="stat-card">
           <span class="stat-label">Automation</span>
@@ -700,7 +690,7 @@ def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          {html.escape(metrics['embedding_backend'])} / {html.escape(llm_status)}
+          {html.escape(metrics.get('embedding_backend', 'sentence-transformers+faiss'))} / {html.escape(llm_status)}
         </div>
       </header>
 
@@ -709,7 +699,7 @@ def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
       <form id="chat-form" class="composer">
         <label class="composer-label" for="query-input">Ask about prices, exports, supply, weather, or country performance.</label>
         <div class="composer-row">
-          <textarea id="query-input" name="query" rows="2" placeholder="What factors pushed coffee prices down in early 2026?"></textarea>
+          <textarea id="query-input" name="query" rows="2" placeholder="What changed in the latest ICO Coffee Market Report?"></textarea>
           <button type="submit" id="send-button">Ask</button>
         </div>
       </form>
@@ -738,18 +728,13 @@ def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
     handler.wfile.write(file_path.read_bytes())
 
 
-<<<<<<< HEAD
 def make_handler(
-    index: dict,
-    metrics: dict,
+    state: LiveState,
+    index_path: Path,
     top_k: int,
     max_sentences: int,
-    trend_data: dict | None,
-    llm_config: LLMConfig | None,
+    llm_config: LLMConfig | None = None,
 ):
-=======
-def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: int):
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
     class CoffeeHandler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = 200) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -767,13 +752,13 @@ def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: 
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path == "/":
-<<<<<<< HEAD
-                body = build_homepage(metrics, llm_config=llm_config)
-=======
                 refresh_live_state(state, index_path)
                 snapshot = state.snapshot
-                body = build_homepage(snapshot.metrics, state.last_refresh["status"])
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
+                body = build_homepage(
+                    snapshot.metrics,
+                    refresh_status=state.last_refresh["status"],
+                    llm_config=llm_config,
+                )
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Cache-Control", "no-store")
@@ -788,6 +773,8 @@ def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: 
                 return
 
             if parsed.path == "/api/health":
+                snapshot = state.snapshot
+                metrics = snapshot.metrics
                 self._send_json(
                     {
                         "ok": True,
@@ -822,13 +809,14 @@ def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: 
                 return
 
             filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else None
+            snapshot = state.snapshot
             try:
                 response = answer_query(
-                    index,
+                    snapshot.index,
                     query,
                     top_k=top_k,
                     max_sentences=max_sentences,
-                    trend_data=trend_data,
+                    trend_data=snapshot.trend_data,
                     filters=filters,
                     llm_config=llm_config,
                 )
@@ -843,7 +831,6 @@ def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: 
     return CoffeeHandler
 
 
-<<<<<<< HEAD
 def run_server(
     index_path: Path,
     host: str,
@@ -852,15 +839,8 @@ def run_server(
     max_sentences: int,
     llm_config: LLMConfig | None = None,
 ) -> None:
-    index = load_index(index_path)
-    metrics = app_metrics(index)
-    trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
-    handler = make_handler(index, metrics, top_k, max_sentences, trend_data, llm_config)
-=======
-def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
     state = LiveState(load_search_snapshot(index_path))
-    handler = make_handler(state, index_path, top_k, max_sentences)
->>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
+    handler = make_handler(state, index_path, top_k, max_sentences, llm_config=llm_config)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
     try:

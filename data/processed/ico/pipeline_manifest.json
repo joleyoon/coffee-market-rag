@@ -1,0 +1,423 @@
+{
+  "dataset_version": "20260604T011020Z",
+  "built_at": "2026-06-04T01:10:20Z",
+  "stages": [
+    "ingest",
+    "clean",
+    "chunk",
+    "embed",
+    "store",
+    "serve"
+  ],
+  "embedding_backend": "sentence-transformers+faiss",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "vector_index": "IndexFlatIP",
+  "source_manifest_path": "data/raw/ico/specialized-reports/reports.json",
+  "version_root": "data/processed/ico/versions/20260604T011020Z",
+  "artifacts": {
+    "extracted_jsonl": "data/processed/ico/versions/20260604T011020Z/extracted_text/reports.jsonl",
+    "chunks_path": "data/processed/ico/versions/20260604T011020Z/chunks/chunks.jsonl",
+    "index_path": "data/processed/ico/versions/20260604T011020Z/index/faiss_index.pkl",
+    "trend_path": "data/processed/ico/versions/20260604T011020Z/trends/trend-data.json"
+  },
+  "report_count": 13,
+  "chunk_count": 224,
+  "latest_report_date": "2026-04-01",
+  "new_report_ids": [
+    "cmr-0126-e",
+    "cmr-0226-e",
+    "cmr-0326-e",
+    "cmr-0425-e",
+    "cmr-0426-e",
+    "cmr-0525-e",
+    "cmr-0625-e",
+    "cmr-0725-e",
+    "cmr-0825-e",
+    "cmr-0925-e",
+    "cmr-1025-e",
+    "cmr-1125-e",
+    "cmr-1225-e"
+  ],
+  "existing_report_ids": [],
+  "countries": [
+    "Brazil",
+    "Burundi",
+    "Cameroon",
+    "China",
+    "Colombia",
+    "Costa Rica",
+    "Ecuador",
+    "El Salvador",
+    "Ethiopia",
+    "Germany",
+    "Guatemala",
+    "Honduras",
+    "India",
+    "Indonesia",
+    "Kenya",
+    "Mexico",
+    "Nicaragua",
+    "Papua New Guinea",
+    "Peru",
+    "Rwanda",
+    "Tanzania",
+    "Uganda",
+    "United States",
+    "Venezuela",
+    "Vietnam"
+  ],
+  "coffee_types": [
+    "Arabica",
+    "Robusta"
+  ],
+  "reports": [
+    {
+      "report_id": "cmr-0426-e",
+      "title": "Monthly Coffee Market Report \u2013 April 2026",
+      "published_date": "2026-04-01",
+      "report_period": "latest",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0326-e",
+      "title": "Monthly Coffee Market Report \u2013 March 2026",
+      "published_date": "2026-03-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Ethiopia",
+        "Indonesia",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua",
+        "Kenya",
+        "Rwanda",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0226-e",
+      "title": "Monthly Coffee Market Report \u2013 February 2026",
+      "published_date": "2026-02-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Uganda",
+        "Indonesia",
+        "Mexico",
+        "Nicaragua"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0126-e",
+      "title": "Monthly Coffee Market Report \u2013 January 2026",
+      "published_date": "2026-01-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Nicaragua",
+        "Tanzania"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-1225-e",
+      "title": "Monthly Coffee Market Report \u2013 December 2025",
+      "published_date": "2025-12-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua",
+        "Costa Rica",
+        "El Salvador",
+        "Kenya",
+        "Tanzania",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-1125-e",
+      "title": "Monthly Coffee Market Report \u2013 November 2025",
+      "published_date": "2025-11-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Nicaragua",
+        "Tanzania",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-1025-e",
+      "title": "Monthly Coffee Market Report \u2013 October 2025",
+      "published_date": "2025-10-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua",
+        "Papua New Guinea"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0925-e",
+      "title": "cmr-0925-e.pdf",
+      "published_date": "2025-09-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "Uganda",
+        "Ethiopia",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua",
+        "Costa Rica",
+        "Kenya",
+        "Tanzania",
+        "Rwanda",
+        "Cameroon",
+        "United States",
+        "Germany"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0825-e",
+      "title": "Monthly Coffee Market Report \u2013 August 2025",
+      "published_date": "2025-08-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Mexico",
+        "Nicaragua",
+        "Kenya",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0725-e",
+      "title": "Monthly Coffee Market Report \u2013 July 2025",
+      "published_date": "2025-07-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "India",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Guatemala",
+        "Nicaragua",
+        "Costa Rica",
+        "El Salvador",
+        "Kenya",
+        "Tanzania",
+        "Rwanda",
+        "Burundi",
+        "China",
+        "Papua New Guinea",
+        "Ecuador",
+        "Venezuela",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0625-e",
+      "title": "Monthly Coffee Market Report \u2013 June 2025",
+      "published_date": "2025-06-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Mexico",
+        "Nicaragua",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0525-e",
+      "title": "Monthly Coffee Market Report \u2013 May 2025",
+      "published_date": "2025-05-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Nicaragua",
+        "Kenya",
+        "United States"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    },
+    {
+      "report_id": "cmr-0425-e",
+      "title": "Monthly Coffee Market Report \u2013 April 2025",
+      "published_date": "2025-04-01",
+      "report_period": "historical",
+      "ingest_status": "new",
+      "dataset_version": "20260604T011020Z",
+      "country_tags": [
+        "Brazil",
+        "Vietnam",
+        "Colombia",
+        "Honduras",
+        "Uganda",
+        "Ethiopia",
+        "Indonesia",
+        "Peru",
+        "Mexico",
+        "Costa Rica",
+        "Papua New Guinea"
+      ],
+      "coffee_type_tags": [
+        "Arabica",
+        "Robusta"
+      ]
+    }
+  ]
+}

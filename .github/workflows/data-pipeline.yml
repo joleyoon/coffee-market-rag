@@ -27,7 +27,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Refresh versioned dataset snapshot
-        run: python scripts/run_data_pipeline.py --skip-static-export
+        run: python scripts/run_data_pipeline.py --insecure --skip-static-export
 
       - name: Upload pipeline artifacts
         uses: actions/upload-artifact@v4

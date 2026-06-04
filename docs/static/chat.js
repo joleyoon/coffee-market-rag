@@ -38,6 +38,46 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function setElementText(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = value;
+  }
+}
+
+function uniqueReportCount(chunks) {
+  return new Set((chunks || []).map((chunk) => chunk.report_id).filter(Boolean)).size;
+}
+
+function coverageRange(chunks) {
+  const dates = (chunks || [])
+    .map((chunk) => chunk.published_date)
+    .filter(Boolean)
+    .sort();
+
+  if (dates.length === 0) {
+    return "No report dates";
+  }
+
+  return `${dates[0].slice(0, 7)} to ${dates[dates.length - 1].slice(0, 7)}`;
+}
+
+function applyStaticDataMetadata(data) {
+  const chunks = data.chunks || [];
+  const manifest = data.pipeline_manifest || {};
+  const reportCount = manifest.report_count || data.report_count || uniqueReportCount(chunks);
+  const chunkCount = manifest.chunk_count || data.chunk_count || chunks.length;
+
+  config.reportCount = reportCount;
+  config.chunkCount = chunkCount;
+  config.datasetVersion = manifest.dataset_version || config.datasetVersion;
+
+  setElementText("coverage-report-count", `${reportCount} reports`);
+  setElementText("coverage-range", coverageRange(chunks));
+  setElementText("coverage-chunk-count", `${chunkCount} chunks`);
+  setElementText("coverage-index-label", "Browser-safe static retrieval bundle");
+}
+
 function renderHighlightList(items) {
   if (!items || items.length === 0) {
     return "";
@@ -567,4 +607,19 @@ document.querySelectorAll("[data-suggestion]").forEach((button) => {
   });
 });
 
-assistantWelcome();
+async function initializePage() {
+  if (appMode === "static-search") {
+    try {
+      const data = await loadSearchData();
+      applyStaticDataMetadata(data);
+    } catch (error) {
+      setElementText("coverage-report-count", "Unavailable");
+      setElementText("coverage-range", "Static data failed to load");
+      setElementText("coverage-chunk-count", "Unavailable");
+    }
+  }
+
+  assistantWelcome();
+}
+
+initializePage();

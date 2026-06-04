@@ -22,13 +22,13 @@
       <div class="hero-stats">
         <article class="stat-card">
           <span class="stat-label">Coverage</span>
-          <strong class="stat-value">13 reports</strong>
-          <p>2025-02 to 2026-02</p>
+          <strong class="stat-value" id="coverage-report-count">13 reports</strong>
+          <p id="coverage-range">2025-04 to 2026-04</p>
         </article>
         <article class="stat-card">
           <span class="stat-label">Vector Search</span>
-          <strong class="stat-value">222 chunks</strong>
-          <p>FAISS over sentence-transformers embeddings</p>
+          <strong class="stat-value" id="coverage-chunk-count">224 chunks</strong>
+          <p id="coverage-index-label">Browser-safe static retrieval bundle</p>
         </article>
         <article class="stat-card">
           <span class="stat-label">Automation</span>
@@ -56,8 +56,8 @@
       <section class="suggestion-panel">
         <h2>Prompt Ideas</h2>
         <div class="suggestion-list">
-          <button class="suggestion-chip" data-suggestion="Which coffee category had the steepest price decline in February 2026?">Which coffee category had the steepest price decline in February 2026?</button>
-          <button class="suggestion-chip" data-suggestion="What factors pushed coffee prices down in early 2026?">What factors pushed coffee prices down in early 2026?</button>
+          <button class="suggestion-chip" data-suggestion="What changed in the latest ICO Coffee Market Report?">What changed in the latest ICO Coffee Market Report?</button>
+          <button class="suggestion-chip" data-suggestion="What factors affected coffee prices in April 2026?">What factors affected coffee prices in April 2026?</button>
           <button class="suggestion-chip" data-suggestion="What does the ICO say about Brazil's supply outlook?">What does the ICO say about Brazil's supply outlook?</button>
           <button class="suggestion-chip" data-suggestion="Which regions showed weaker export performance recently?">Which regions showed weaker export performance recently?</button>
         </div>
@@ -81,7 +81,7 @@
       <form id="chat-form" class="composer">
         <label class="composer-label" for="query-input">Ask a market question. This version searches a prebuilt report index in the browser.</label>
         <div class="composer-row">
-          <textarea id="query-input" name="query" rows="2" placeholder="What factors pushed coffee prices down in early 2026?"></textarea>
+          <textarea id="query-input" name="query" rows="2" placeholder="What changed in the latest ICO Coffee Market Report?"></textarea>
           <button type="submit" id="send-button">Ask</button>
         </div>
       </form>
@@ -92,7 +92,7 @@
     window.APP_CONFIG = {
       mode: "static-search",
       reportCount: 13,
-      chunkCount: 222,
+      chunkCount: 224,
       embeddingBackend: "sentence-transformers+faiss",
       embeddingModel: "sentence-transformers/all-MiniLM-L6-v2",
       vectorIndex: "IndexFlatIP",
@@ -109,8 +109,8 @@
       dataUrl: "./data/search-data.json",
       localRunCommand: "python3 app/app.py --serve",
       suggestions: [
-        "Which coffee category had the steepest price decline in February 2026?",
-        "What factors pushed coffee prices down in early 2026?",
+        "What changed in the latest ICO Coffee Market Report?",
+        "What factors affected coffee prices in April 2026?",
         "What does the ICO say about Brazil's supply outlook?",
         "Which regions showed weaker export performance recently?"
       ]
