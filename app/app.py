@@ -7,8 +7,12 @@ import argparse
 import html
 import json
 import mimetypes
+import os
 import re
 import sys
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -24,14 +28,36 @@ from scripts.report_utils import clean_text, load_json
 DEFAULT_INDEX = Path("data/processed/ico/index/faiss_index.pkl")
 DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
+DEFAULT_LLM_MODEL = "gpt-5.5"
+DEFAULT_OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 DEFAULT_SUGGESTIONS = [
     "Which coffee category had the steepest price decline in February 2026?",
     "What factors pushed coffee prices down in early 2026?",
     "What does the ICO say about Brazil's supply outlook?",
     "Which regions showed weaker export performance recently?",
 ]
+
+
+@dataclass(frozen=True)
+class LLMConfig:
+    mode: str
+    model: str
+    api_key: str | None
+    base_url: str
+    timeout: float
+    max_output_tokens: int
+
+    @property
+    def enabled(self) -> bool:
+        return self.mode != "off" and bool(self.api_key)
+
+    @property
+    def required(self) -> bool:
+        return self.mode == "required"
+
+
 PROJECT_HIGHLIGHTS = [
-    "Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.",
+    "Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.",
     "Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.",
     "Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.",
     "Processed and embedded unstructured PDF reports for scalable semantic search and analysis.",
@@ -61,6 +87,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--published-after", default=None)
     parser.add_argument("--published-before", default=None)
     parser.add_argument("--dataset-version", default=None)
+    parser.add_argument(
+        "--llm-mode",
+        choices=["auto", "off", "required"],
+        default=os.environ.get("RAG_LLM_MODE", "auto"),
+        help="Use optional LLM generation after retrieval. auto uses OPENAI_API_KEY when present.",
+    )
+    parser.add_argument("--llm-model", default=os.environ.get("OPENAI_MODEL", DEFAULT_LLM_MODEL))
+    parser.add_argument("--llm-timeout", type=float, default=float(os.environ.get("OPENAI_TIMEOUT", "20")))
+    parser.add_argument("--llm-max-output-tokens", type=int, default=int(os.environ.get("OPENAI_MAX_OUTPUT_TOKENS", "500")))
     parser.add_argument("query", nargs="*")
     return parser.parse_args()
 
@@ -209,7 +244,137 @@ def sources_from_results(results: list[dict], selected_sources: list[str]) -> li
         }
         for result in results
     }
+    for index, result in enumerate(results, start=1):
+        source_map[f"S{index}"] = {
+            "title": result["title"],
+            "page_number": result["page_number"],
+            "report_id": result["report_id"],
+            "published_date": result.get("published_date"),
+            "source_url": result["source_url"],
+            "country_tags": result.get("country_tags", []),
+            "coffee_type_tags": result.get("coffee_type_tags", []),
+            "dataset_version": result.get("dataset_version"),
+        }
     return [source_map[source] for source in selected_sources if source in source_map]
+
+
+def llm_config_from_args(args: argparse.Namespace) -> LLMConfig:
+    return LLMConfig(
+        mode=args.llm_mode,
+        model=args.llm_model,
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        base_url=os.environ.get("OPENAI_RESPONSES_URL", DEFAULT_OPENAI_RESPONSES_URL),
+        timeout=args.llm_timeout,
+        max_output_tokens=args.llm_max_output_tokens,
+    )
+
+
+def context_for_llm(results: list[dict], max_chars_per_chunk: int = 1400) -> str:
+    context_blocks: list[str] = []
+    for index, result in enumerate(results, start=1):
+        source_id = f"S{index}"
+        chunk_text = clean_text(result["chunk_text"])[:max_chars_per_chunk]
+        tags = ", ".join(result.get("country_tags", []) + result.get("coffee_type_tags", [])) or "n/a"
+        context_blocks.append(
+            "\n".join(
+                [
+                    f"[{source_id}] {result['title']}, page {result['page_number']}",
+                    f"published_date: {result.get('published_date') or 'n/a'}",
+                    f"metadata_tags: {tags}",
+                    f"text: {chunk_text}",
+                ]
+            )
+        )
+    return "\n\n".join(context_blocks)
+
+
+def llm_generation_prompt(query: str, results: list[dict]) -> str:
+    return f"""Question:
+{query}
+
+Retrieved context:
+{context_for_llm(results)}
+
+Return JSON only with this shape:
+{{
+  "answer": "one concise direct answer grounded only in the retrieved context",
+  "why": ["one or two short supporting points"],
+  "sources": ["S1", "S2"]
+}}
+
+Use only the retrieved context. If the context does not contain enough evidence, set answer to null, why to [], and sources to []."""
+
+
+def extract_response_text(response_payload: dict) -> str:
+    if isinstance(response_payload.get("output_text"), str):
+        return response_payload["output_text"]
+
+    text_parts: list[str] = []
+    for item in response_payload.get("output", []):
+        for content in item.get("content", []):
+            if content.get("type") == "output_text" and isinstance(content.get("text"), str):
+                text_parts.append(content["text"])
+    return "\n".join(text_parts).strip()
+
+
+def call_openai_responses_api(prompt: str, config: LLMConfig) -> dict:
+    if not config.api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for LLM generation")
+
+    request_payload = {
+        "model": config.model,
+        "instructions": (
+            "You generate grounded coffee market answers from retrieved ICO report chunks. "
+            "Use only supplied context, keep answers concise, and cite source IDs exactly."
+        ),
+        "input": prompt,
+        "max_output_tokens": config.max_output_tokens,
+        "text": {"format": {"type": "text"}, "verbosity": "low"},
+        "reasoning": {"effort": "low"},
+        "store": False,
+    }
+    body = json.dumps(request_payload).encode("utf-8")
+    request = urllib.request.Request(
+        config.base_url,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=config.timeout) as response:  # noqa: S310
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"OpenAI response failed with HTTP {exc.code}: {error_body}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"OpenAI response failed: {exc.reason}") from exc
+
+
+def parse_llm_answer(raw_text: str) -> tuple[str | None, list[str], list[str]]:
+    cleaned = raw_text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    payload = json.loads(cleaned)
+    answer = payload.get("answer")
+    if answer is not None:
+        answer = str(answer).strip() or None
+    why = [str(item).strip() for item in payload.get("why", []) if str(item).strip()]
+    sources = [str(item).strip() for item in payload.get("sources", []) if str(item).strip()]
+    return answer, why, sources
+
+
+def build_llm_answer(results: list[dict], query: str, config: LLMConfig) -> tuple[str | None, list[str], list[str]]:
+    response_payload = call_openai_responses_api(llm_generation_prompt(query, results), config)
+    raw_text = extract_response_text(response_payload)
+    if not raw_text:
+        raise RuntimeError("OpenAI response did not include output text")
+    return parse_llm_answer(raw_text)
 
 
 def infer_trend_chart(trend_data: dict | None, query: str, answer: str | None) -> dict | None:
@@ -266,15 +431,38 @@ def answer_query(
     max_sentences: int,
     trend_data: dict | None = None,
     filters: dict | None = None,
+    llm_config: LLMConfig | None = None,
 ) -> dict:
     results = search_index(index, query, top_k, filters=filters)
     direct_answer, explanation, selected_sources = build_answer(results, query, max_sentences)
+    answer_mode = "extractive"
+    llm_error = None
+
+    if llm_config and results:
+        if llm_config.required and not llm_config.enabled:
+            raise RuntimeError("LLM generation is required, but OPENAI_API_KEY is not set")
+        if llm_config.enabled:
+            try:
+                llm_answer, llm_explanation, llm_sources = build_llm_answer(results, query, llm_config)
+                if llm_answer:
+                    direct_answer = llm_answer
+                    explanation = llm_explanation
+                    selected_sources = llm_sources
+                    answer_mode = "llm"
+            except (RuntimeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+                if llm_config.required:
+                    raise RuntimeError(f"LLM generation failed: {exc}") from exc
+                llm_error = str(exc)
+
     index_metadata = index.get("metadata", {})
 
     return {
         "query": query,
         "filters": filters or {},
         "dataset_version": index_metadata.get("dataset_version"),
+        "answer_mode": answer_mode,
+        "llm_model": llm_config.model if llm_config and answer_mode == "llm" else None,
+        "llm_error": llm_error,
         "answer": direct_answer,
         "why": explanation,
         "sources": sources_from_results(results, selected_sources),
@@ -296,6 +484,7 @@ def answer_query(
 
 def print_cli_response(payload: dict, show_context: bool) -> None:
     print(f"Question: {payload['query']}\n")
+    print(f"Mode: {payload.get('answer_mode', 'extractive')}")
     print("Answer:")
     print(payload["answer"] or "The current index did not return enough evidence to generate a concise answer.")
 
@@ -333,7 +522,8 @@ def app_metrics(index: dict) -> dict:
     }
 
 
-def build_homepage(metrics: dict) -> bytes:
+def build_homepage(metrics: dict, llm_config: LLMConfig | None = None) -> bytes:
+    llm_status = "LLM enabled" if llm_config and llm_config.enabled else "LLM optional"
     config = {
         "mode": "live",
         "suggestions": DEFAULT_SUGGESTIONS,
@@ -343,6 +533,9 @@ def build_homepage(metrics: dict) -> bytes:
         "embeddingBackend": metrics["embedding_backend"],
         "embeddingModel": metrics["embedding_model"],
         "vectorIndex": metrics["vector_index"],
+        "llmMode": llm_config.mode if llm_config else "auto",
+        "llmModel": llm_config.model if llm_config else DEFAULT_LLM_MODEL,
+        "llmEnabled": bool(llm_config and llm_config.enabled),
         "systemHighlights": PROJECT_HIGHLIGHTS,
         "localRunCommand": "python3 app/app.py --serve",
         "trendDataUrl": "/static/trend-data.json",
@@ -366,7 +559,7 @@ def build_homepage(metrics: dict) -> bytes:
       <p class="eyebrow">ICO REPORTS / RAG SYSTEM</p>
       <h1>Coffee Market Intelligence Assistant</h1>
       <p class="hero-copy">
-        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and generate cited market insights.
+        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and optionally generate cited market insights with an LLM.
       </p>
 
       <div class="hero-stats">
@@ -384,6 +577,11 @@ def build_homepage(metrics: dict) -> bytes:
           <span class="stat-label">Automation</span>
           <strong class="stat-value">CI/CD</strong>
           <p>GitHub Actions tests, smoke checks, deployment, and scheduled refreshes</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Generation</span>
+          <strong class="stat-value">{html.escape(llm_status)}</strong>
+          <p>OpenAI Responses API when OPENAI_API_KEY is configured</p>
         </article>
       </div>
 
@@ -410,7 +608,7 @@ def build_homepage(metrics: dict) -> bytes:
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          {html.escape(metrics['embedding_backend'])} / {html.escape(metrics['dataset_version'])}
+          {html.escape(metrics['embedding_backend'])} / {html.escape(llm_status)}
         </div>
       </header>
 
@@ -448,7 +646,14 @@ def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
     handler.wfile.write(file_path.read_bytes())
 
 
-def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, trend_data: dict | None):
+def make_handler(
+    index: dict,
+    metrics: dict,
+    top_k: int,
+    max_sentences: int,
+    trend_data: dict | None,
+    llm_config: LLMConfig | None,
+):
     class CoffeeHandler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = 200) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -466,7 +671,7 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path == "/":
-                body = build_homepage(metrics)
+                body = build_homepage(metrics, llm_config=llm_config)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -514,14 +719,19 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
                 return
 
             filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else None
-            response = answer_query(
-                index,
-                query,
-                top_k=top_k,
-                max_sentences=max_sentences,
-                trend_data=trend_data,
-                filters=filters,
-            )
+            try:
+                response = answer_query(
+                    index,
+                    query,
+                    top_k=top_k,
+                    max_sentences=max_sentences,
+                    trend_data=trend_data,
+                    filters=filters,
+                    llm_config=llm_config,
+                )
+            except RuntimeError as exc:
+                self._send_json({"error": str(exc)}, status=502)
+                return
             self._send_json(response)
 
         def log_message(self, format: str, *args) -> None:  # noqa: A003
@@ -530,11 +740,18 @@ def make_handler(index: dict, metrics: dict, top_k: int, max_sentences: int, tre
     return CoffeeHandler
 
 
-def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
+def run_server(
+    index_path: Path,
+    host: str,
+    port: int,
+    top_k: int,
+    max_sentences: int,
+    llm_config: LLMConfig | None = None,
+) -> None:
     index = load_index(index_path)
     metrics = app_metrics(index)
     trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
-    handler = make_handler(index, metrics, top_k, max_sentences, trend_data)
+    handler = make_handler(index, metrics, top_k, max_sentences, trend_data, llm_config)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
     try:
@@ -547,9 +764,10 @@ def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences
 
 def main() -> int:
     args = parse_args()
+    llm_config = llm_config_from_args(args)
 
     if args.serve:
-        run_server(Path(args.index_path), args.host, args.port, args.top_k, args.max_sentences)
+        run_server(Path(args.index_path), args.host, args.port, args.top_k, args.max_sentences, llm_config=llm_config)
         return 0
 
     query = " ".join(args.query).strip()
@@ -558,14 +776,19 @@ def main() -> int:
 
     index = load_index(Path(args.index_path))
     trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
-    payload = answer_query(
-        index,
-        query,
-        top_k=args.top_k,
-        max_sentences=args.max_sentences,
-        trend_data=trend_data,
-        filters=filters_from_args(args),
-    )
+    try:
+        payload = answer_query(
+            index,
+            query,
+            top_k=args.top_k,
+            max_sentences=args.max_sentences,
+            trend_data=trend_data,
+            filters=filters_from_args(args),
+            llm_config=llm_config,
+        )
+    except RuntimeError as exc:
+        print(f"Request failed: {exc}", file=sys.stderr)
+        return 1
     print_cli_response(payload, args.show_context)
     return 0
 

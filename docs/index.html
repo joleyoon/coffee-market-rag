@@ -16,7 +16,7 @@
       <p class="eyebrow">ICO REPORTS / RAG SYSTEM</p>
       <h1>Coffee Market Intelligence Assistant</h1>
       <p class="hero-copy">
-        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and generate cited market insights.
+        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and optionally generate cited market insights with an LLM.
       </p>
 
       <div class="hero-stats">
@@ -35,12 +35,17 @@
           <strong class="stat-value">CI/CD</strong>
           <p>GitHub Actions tests, smoke checks, deployment, and scheduled refreshes</p>
         </article>
+        <article class="stat-card">
+          <span class="stat-label">Generation</span>
+          <strong class="stat-value">LLM optional</strong>
+          <p>OpenAI Responses API when OPENAI_API_KEY is configured locally</p>
+        </article>
       </div>
 
       <section class="system-panel">
         <h2>System Highlights</h2>
         <ul class="system-list">
-          <li>Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.</li>
+          <li>Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.</li>
           <li>Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.</li>
           <li>Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.</li>
           <li>Processed and embedded unstructured PDF reports for scalable semantic search and analysis.</li>
@@ -91,8 +96,11 @@
       embeddingBackend: "sentence-transformers+faiss",
       embeddingModel: "sentence-transformers/all-MiniLM-L6-v2",
       vectorIndex: "IndexFlatIP",
+      llmMode: "auto",
+      llmModel: "gpt-5.5",
+      llmEnabled: false,
       systemHighlights: [
-        "Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.",
+        "Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.",
         "Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.",
         "Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.",
         "Processed and embedded unstructured PDF reports for scalable semantic search and analysis.",

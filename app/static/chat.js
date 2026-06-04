@@ -55,7 +55,7 @@ function renderHighlightList(items) {
 function assistantWelcome() {
   const intro = appMode === "static"
     ? `This static preview shows the chatbot surface. Run the Python app for sentence-transformers embeddings, FAISS vector search, metadata filtering, and answer synthesis.`
-    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, synthesizes a direct answer, and cites supporting pages.`;
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, uses optional LLM generation when configured, and cites supporting pages.`;
 
   createMessage(
     "assistant",
@@ -208,6 +208,13 @@ function setLoadingState(isLoading) {
   inputEl.disabled = isLoading;
 }
 
+function answerBadge(payload) {
+  if (payload.answer_mode === "llm") {
+    return payload.llm_model ? `LLM generated / ${escapeHtml(payload.llm_model)}` : "LLM generated";
+  }
+  return "extractive fallback";
+}
+
 async function submitQuery(query) {
   createMessage("user", `<p>${escapeHtml(query)}</p>`);
 
@@ -251,7 +258,7 @@ async function submitQuery(query) {
       return;
     }
 
-    createMessage("assistant", renderAssistantPayload(payload), "grounded answer");
+    createMessage("assistant", renderAssistantPayload(payload), answerBadge(payload));
   } catch (error) {
     loadingMessage.remove();
     createMessage("assistant", `<p>Request failed. Check that the local server is still running.</p>`);

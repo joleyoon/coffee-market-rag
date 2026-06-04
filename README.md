@@ -16,7 +16,7 @@ What is included:
 
 ## Resume Alignment
 
-- Built a retrieval-augmented generation (RAG) system to automate cited insights from coffee market reports.
+- Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.
 - Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.
 - Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.
 - Processed and embedded unstructured PDF reports for scalable semantic search and analysis.
@@ -36,9 +36,21 @@ python3 scripts/schedule_data_pipeline.py --daily-at 06:30
 python3 scripts/query_index.py "global coffee demand"
 python3 scripts/query_index.py --country Brazil --coffee-type Arabica "supply outlook"
 python3 app/app.py "arabica supply risk"
+OPENAI_API_KEY=... python3 app/app.py --llm-mode auto "arabica supply risk"
 python3 app/app.py --serve
 python3 -m unittest discover -s tests -v
 ```
+
+## Optional LLM Generation
+
+The app works without an API key by using retrieval plus deterministic answer synthesis. To enable the optional generation layer, set `OPENAI_API_KEY`; retrieved FAISS chunks are passed to the OpenAI Responses API and the model must return grounded JSON with source IDs.
+
+Useful controls:
+
+- `--llm-mode auto` uses the LLM when `OPENAI_API_KEY` is present and falls back otherwise.
+- `--llm-mode off` forces retrieval-only answer synthesis.
+- `--llm-mode required` fails the request if LLM generation is unavailable.
+- `--llm-model` defaults to `OPENAI_MODEL` or `gpt-5.5`.
 
 ## Pipeline Outputs
 
