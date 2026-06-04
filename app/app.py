@@ -9,12 +9,20 @@ import json
 import mimetypes
 import os
 import re
+import subprocess
 import sys
+<<<<<<< HEAD
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+=======
+import threading
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,8 +36,18 @@ from scripts.report_utils import clean_text, load_json
 DEFAULT_INDEX = Path("data/processed/ico/index/faiss_index.pkl")
 DEFAULT_TREND_DATA = Path("data/processed/ico/trends/trend-data.json")
 STATIC_DIR = ROOT / "app" / "static"
+<<<<<<< HEAD
 DEFAULT_LLM_MODEL = "gpt-5.5"
 DEFAULT_OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+=======
+REFRESH_PIPELINE_SCRIPTS = [
+    "scripts/scrape_ico_specialized_reports.py",
+    "scripts/extract_report_text.py",
+    "scripts/chunk_reports.py",
+    "scripts/build_vector_index.py",
+    "scripts/export_trend_data.py",
+]
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
 DEFAULT_SUGGESTIONS = [
     "Which coffee category had the steepest price decline in February 2026?",
     "What factors pushed coffee prices down in early 2026?",
@@ -63,6 +81,75 @@ PROJECT_HIGHLIGHTS = [
     "Processed and embedded unstructured PDF reports for scalable semantic search and analysis.",
     "Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes.",
 ]
+
+
+@dataclass(frozen=True)
+class SearchSnapshot:
+    index: dict
+    metrics: dict
+    trend_data: dict | None
+
+
+@dataclass
+class LiveState:
+    snapshot: SearchSnapshot
+    last_refresh: dict = field(default_factory=lambda: {"status": "not_started"})
+    refresh_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+
+def project_path(path: Path) -> Path:
+    return path if path.is_absolute() else ROOT / path
+
+
+def load_search_snapshot(index_path: Path) -> SearchSnapshot:
+    index = load_index(project_path(index_path))
+    trend_path = project_path(DEFAULT_TREND_DATA)
+    trend_data = load_json(trend_path) if trend_path.exists() else None
+    return SearchSnapshot(index=index, metrics=app_metrics(index), trend_data=trend_data)
+
+
+def run_refresh_pipeline() -> None:
+    for script in REFRESH_PIPELINE_SCRIPTS:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / script)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            details = result.stderr.strip() or result.stdout.strip() or "no command output"
+            raise RuntimeError(f"{Path(script).name} failed: {details[-600:]}")
+
+
+def refresh_live_state(
+    state: LiveState,
+    index_path: Path,
+    pipeline_runner: Callable[[], None] = run_refresh_pipeline,
+) -> bool:
+    with state.refresh_lock:
+        started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        try:
+            pipeline_runner()
+            snapshot = load_search_snapshot(index_path)
+        except Exception as exc:
+            state.last_refresh = {
+                "status": "failed",
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "error": str(exc),
+            }
+            print(f"Coffee report refresh failed: {exc}", file=sys.stderr)
+            return False
+
+        state.snapshot = snapshot
+        state.last_refresh = {
+            "status": "succeeded",
+            "started_at": started_at,
+            "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "report_count": snapshot.metrics["report_count"],
+        }
+        print(f"Refreshed coffee reports: {snapshot.metrics['report_count']} reports indexed")
+        return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -522,8 +609,12 @@ def app_metrics(index: dict) -> dict:
     }
 
 
+<<<<<<< HEAD
 def build_homepage(metrics: dict, llm_config: LLMConfig | None = None) -> bytes:
     llm_status = "LLM enabled" if llm_config and llm_config.enabled else "LLM optional"
+=======
+def build_homepage(metrics: dict, refresh_status: str = "not_started") -> bytes:
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
     config = {
         "mode": "live",
         "suggestions": DEFAULT_SUGGESTIONS,
@@ -539,6 +630,7 @@ def build_homepage(metrics: dict, llm_config: LLMConfig | None = None) -> bytes:
         "systemHighlights": PROJECT_HIGHLIGHTS,
         "localRunCommand": "python3 app/app.py --serve",
         "trendDataUrl": "/static/trend-data.json",
+        "refreshStatus": refresh_status,
     }
 
     html_page = f"""<!DOCTYPE html>
@@ -646,6 +738,7 @@ def serve_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
     handler.wfile.write(file_path.read_bytes())
 
 
+<<<<<<< HEAD
 def make_handler(
     index: dict,
     metrics: dict,
@@ -654,6 +747,9 @@ def make_handler(
     trend_data: dict | None,
     llm_config: LLMConfig | None,
 ):
+=======
+def make_handler(state: LiveState, index_path: Path, top_k: int, max_sentences: int):
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
     class CoffeeHandler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = 200) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -671,9 +767,16 @@ def make_handler(
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path == "/":
+<<<<<<< HEAD
                 body = build_homepage(metrics, llm_config=llm_config)
+=======
+                refresh_live_state(state, index_path)
+                snapshot = state.snapshot
+                body = build_homepage(snapshot.metrics, state.last_refresh["status"])
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -740,6 +843,7 @@ def make_handler(
     return CoffeeHandler
 
 
+<<<<<<< HEAD
 def run_server(
     index_path: Path,
     host: str,
@@ -752,6 +856,11 @@ def run_server(
     metrics = app_metrics(index)
     trend_data = load_json(DEFAULT_TREND_DATA) if DEFAULT_TREND_DATA.exists() else None
     handler = make_handler(index, metrics, top_k, max_sentences, trend_data, llm_config)
+=======
+def run_server(index_path: Path, host: str, port: int, top_k: int, max_sentences: int) -> None:
+    state = LiveState(load_search_snapshot(index_path))
+    handler = make_handler(state, index_path, top_k, max_sentences)
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Coffee Market Intelligence Assistant at http://{host}:{port}")
     try:

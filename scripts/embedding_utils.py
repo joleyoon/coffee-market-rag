@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from functools import lru_cache
 from typing import Protocol
 
@@ -9,6 +11,8 @@ import numpy as np
 
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+LOCAL_SMOKE_EMBEDDING_MODEL = "local-ci-smoke-embeddings"
+_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 
 
 class EmbeddingModel(Protocol):
@@ -16,8 +20,33 @@ class EmbeddingModel(Protocol):
         """Return embeddings for a batch of strings."""
 
 
+class LocalSmokeEmbeddingModel:
+    """Small deterministic embedding model for CI smoke tests."""
+
+    def __init__(self, dimensions: int = 64) -> None:
+        self.dimensions = dimensions
+
+    def encode(self, sentences: list[str], **_: object) -> np.ndarray:
+        rows = np.zeros((len(sentences), self.dimensions), dtype=np.float32)
+        for row_index, sentence in enumerate(sentences):
+            for token in _TOKEN_RE.findall(sentence.lower()):
+                digest = hashlib.blake2b(token.encode("utf-8"), digest_size=4).digest()
+                bucket = int.from_bytes(digest, byteorder="little") % self.dimensions
+                rows[row_index, bucket] += 1.0
+        return rows
+
+
+def embedding_backend_name(model_name: str) -> str:
+    if model_name == LOCAL_SMOKE_EMBEDDING_MODEL:
+        return "local-ci-smoke+faiss"
+    return "sentence-transformers+faiss"
+
+
 @lru_cache(maxsize=4)
 def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> EmbeddingModel:
+    if model_name == LOCAL_SMOKE_EMBEDDING_MODEL:
+        return LocalSmokeEmbeddingModel()
+
     try:
         from sentence_transformers import SentenceTransformer
     except ImportError as exc:

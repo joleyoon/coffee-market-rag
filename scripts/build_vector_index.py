@@ -16,6 +16,7 @@ from scripts.embedding_utils import (
     DEFAULT_EMBEDDING_MODEL,
     EmbeddingModel,
     build_faiss_index,
+    embedding_backend_name,
     encode_texts,
     load_embedding_model,
     serialize_faiss_index,
@@ -79,7 +80,7 @@ def build_index(
         "chunks": chunks,
         "metadata": {
             "dataset_version": dataset_version,
-            "embedding_backend": "sentence-transformers+faiss",
+            "embedding_backend": embedding_backend_name(embedding_model_name),
             "embedding_model": embedding_model_name,
             "distance_metric": "cosine",
             "faiss_index_type": "IndexFlatIP",

@@ -112,7 +112,7 @@ CI:
 
 - `.github/workflows/ci.yml` runs on every push and pull request to `main`
 - It runs the unit tests
-- It smoke-tests the versioned pipeline runner
+- It smoke-tests the versioned pipeline runner with `local-ci-smoke-embeddings` to avoid external model downloads on cold GitHub runners
 - It smoke-tests the app against the generated latest index
 
 Scheduled refresh:
