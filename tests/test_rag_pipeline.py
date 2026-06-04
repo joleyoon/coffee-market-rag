@@ -9,6 +9,7 @@ from unittest.mock import patch
 import numpy as np
 
 from scripts import build_vector_index, chunk_reports, run_data_pipeline
+from scripts.embedding_utils import LOCAL_SMOKE_EMBEDDING_MODEL
 from scripts.query_index import load_index, search_index
 from scripts.report_utils import load_jsonl, write_json, write_jsonl
 
@@ -205,6 +206,42 @@ class RagPipelineTests(unittest.TestCase):
             self.assertEqual(results[0]["report_id"], "cmr-0226-e")
             self.assertIn("Brazil rainfall outlook improved", results[0]["chunk_text"])
             self.assertGreaterEqual(results[0]["score"], results[1]["score"])
+
+    def test_local_smoke_embedding_model_builds_searchable_faiss_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            index_path = tmp_path / "faiss_index.pkl"
+            chunks = [
+                make_chunk(
+                    report_id="cmr-0226-e",
+                    chunk_id="cmr-0226-e-p001-c01",
+                    chunk_text="Brazil rainfall outlook improved after steady rain lifted arabica supply expectations.",
+                    country_tags=["Brazil"],
+                    coffee_type_tags=["Arabica"],
+                ),
+                make_chunk(
+                    report_id="cmr-0126-e",
+                    chunk_id="cmr-0126-e-p001-c01",
+                    chunk_text="Vietnam exports remained strong while robusta shipments accelerated.",
+                    title="Monthly Coffee Market Report - January 2026",
+                    published_date="2026-01-01",
+                    country_tags=["Vietnam"],
+                    coffee_type_tags=["Robusta"],
+                ),
+            ]
+
+            build_vector_index.build_index(
+                chunks,
+                output_path=index_path,
+                embedding_model_name=LOCAL_SMOKE_EMBEDDING_MODEL,
+            )
+            index = load_index(index_path)
+            results = search_index(index, "brazil rainfall arabica", top_k=1)
+
+            self.assertEqual(index["metadata"]["embedding_backend"], "local-ci-smoke+faiss")
+            self.assertEqual(index["metadata"]["embedding_model"], LOCAL_SMOKE_EMBEDDING_MODEL)
+            self.assertEqual(index["metadata"]["index_size"], 2)
+            self.assertEqual(results[0]["report_id"], "cmr-0226-e")
 
     def test_search_index_filters_by_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

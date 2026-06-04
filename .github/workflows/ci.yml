@@ -32,10 +32,11 @@ jobs:
           python scripts/run_data_pipeline.py \
             --skip-ingest \
             --skip-static-export \
+            --embedding-model local-ci-smoke-embeddings \
             --manifest-path data/raw/ico/specialized-reports/reports.json \
             --processed-root /tmp/processed-ico \
             --versions-root /tmp/processed-ico/versions \
             --latest-manifest-path /tmp/processed-ico/pipeline_manifest.json
 
       - name: Smoke test application
-        run: python app/app.py --index-path /tmp/processed-ico/index/faiss_index.pkl "What factors pushed coffee prices down in early 2026?"
+        run: python app/app.py --index-path /tmp/processed-ico/index/faiss_index.pkl --llm-mode off "What factors pushed coffee prices down in early 2026?"

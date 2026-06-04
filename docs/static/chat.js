@@ -55,10 +55,10 @@ function renderHighlightList(items) {
 
 function assistantWelcome() {
   const intro = appMode === "static-search"
-    ? `This GitHub Pages version uses a browser-safe static retrieval bundle. The Python app builds sentence-transformers embeddings, stores them in FAISS, and serves metadata-aware semantic search locally.`
+    ? `This GitHub Pages version uses a browser-safe static retrieval bundle. The Python app builds sentence-transformers embeddings, stores them in FAISS, and can add optional LLM generation through the OpenAI Responses API.`
     : appMode === "static"
     ? `This static preview shows the chatbot surface. Run the Python app for sentence-transformers embeddings, FAISS vector search, metadata filtering, and answer synthesis.`
-    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, synthesizes a direct answer, and cites supporting pages.`;
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, uses optional LLM generation when configured, and cites supporting pages.`;
 
   createMessage(
     "assistant",
