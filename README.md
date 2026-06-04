@@ -2,7 +2,7 @@
 
 Coffee market RAG pipeline for ICO Coffee Market Reports.
 
-The repo now follows a real data pipeline shape:
+The repo follows a real data pipeline shape:
 
 `ingest -> clean -> chunk -> embed -> store -> serve`
 
