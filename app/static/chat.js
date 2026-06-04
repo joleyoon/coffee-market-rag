@@ -37,8 +37,28 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function renderHighlightList(items) {
+  if (!items || items.length === 0) {
+    return "";
+  }
+
+  return `
+    <section>
+      <h3>Build Highlights</h3>
+      <ul class="message-list">
+        ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+}
+
 function assistantWelcome() {
   const intro = appMode === "static"
+    ? `This static preview shows the chatbot surface. Run the Python app for sentence-transformers embeddings, FAISS vector search, metadata filtering, and answer synthesis.`
+<<<<<<< HEAD
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, uses optional LLM generation when configured, and cites supporting pages.`;
+=======
+    : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves embedded report chunks, synthesizes a direct answer, and cites supporting pages.`;
     ? `This is the static GitHub Pages preview of the chatbot interface. The visual layout, prompt ideas, and conversation shell are live here, but grounded retrieval still runs through the local Python server.`
     : `Ask grounded questions across ${config.reportCount || "multiple"} ICO coffee market reports. The assistant retrieves indexed report chunks, synthesizes a direct answer, and cites the supporting pages.`;
   const refreshWarning = appMode === "live" && config.refreshStatus === "failed"
@@ -49,6 +69,7 @@ function assistantWelcome() {
       </section>
     `
     : "";
+>>>>>>> 63bd331ca26d53e5bcbe974e19bf06da715dcd06
 
   createMessage(
     "assistant",
@@ -57,6 +78,7 @@ function assistantWelcome() {
         <h3>What This Assistant Does</h3>
         <p>${intro}</p>
       </section>
+      ${renderHighlightList(config.systemHighlights)}
       <section>
         <h3>Good Questions</h3>
         <p>${(config.suggestions || []).map((item) => escapeHtml(item)).join("<br />")}</p>
@@ -201,6 +223,13 @@ function setLoadingState(isLoading) {
   inputEl.disabled = isLoading;
 }
 
+function answerBadge(payload) {
+  if (payload.answer_mode === "llm") {
+    return payload.llm_model ? `LLM generated / ${escapeHtml(payload.llm_model)}` : "LLM generated";
+  }
+  return "extractive fallback";
+}
+
 async function submitQuery(query) {
   createMessage("user", `<p>${escapeHtml(query)}</p>`);
 
@@ -244,7 +273,7 @@ async function submitQuery(query) {
       return;
     }
 
-    createMessage("assistant", renderAssistantPayload(payload), "grounded answer");
+    createMessage("assistant", renderAssistantPayload(payload), answerBadge(payload));
   } catch (error) {
     loadingMessage.remove();
     createMessage("assistant", `<p>Request failed. Check that the local server is still running.</p>`);

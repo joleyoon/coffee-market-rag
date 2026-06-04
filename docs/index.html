@@ -13,10 +13,10 @@
   <div class="page-shell">
     <aside class="hero-panel">
       <div class="hero-mark">CM</div>
-      <p class="eyebrow">ICO REPORTS / CLIENT-SIDE RETRIEVAL</p>
+      <p class="eyebrow">ICO REPORTS / RAG SYSTEM</p>
       <h1>Coffee Market Intelligence Assistant</h1>
       <p class="hero-copy">
-        This hosted version runs a lightweight client-side retrieval flow directly in the browser, so the chatbot can answer from the indexed ICO report chunks even on GitHub Pages.
+        Retrieval-augmented analytics for ICO Coffee Market Reports: ingest PDFs, embed report chunks, search with FAISS, and optionally generate cited market insights with an LLM.
       </p>
 
       <div class="hero-stats">
@@ -26,11 +26,32 @@
           <p>2025-02 to 2026-02</p>
         </article>
         <article class="stat-card">
-          <span class="stat-label">Retrieval Layer</span>
+          <span class="stat-label">Vector Search</span>
           <strong class="stat-value">222 chunks</strong>
-          <p>Indexed ICO coffee market report passages</p>
+          <p>FAISS over sentence-transformers embeddings</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Automation</span>
+          <strong class="stat-value">CI/CD</strong>
+          <p>GitHub Actions tests, smoke checks, deployment, and scheduled refreshes</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Generation</span>
+          <strong class="stat-value">LLM optional</strong>
+          <p>OpenAI Responses API when OPENAI_API_KEY is configured locally</p>
         </article>
       </div>
+
+      <section class="system-panel">
+        <h2>System Highlights</h2>
+        <ul class="system-list">
+          <li>Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.</li>
+          <li>Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.</li>
+          <li>Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.</li>
+          <li>Processed and embedded unstructured PDF reports for scalable semantic search and analysis.</li>
+          <li>Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes.</li>
+        </ul>
+      </section>
 
       <section class="suggestion-panel">
         <h2>Prompt Ideas</h2>
@@ -46,12 +67,12 @@
     <section class="chat-panel">
       <header class="chat-header">
         <div>
-          <p class="eyebrow">GITHUB PAGES</p>
-          <h2>Client-side coffee chatbot</h2>
+          <p class="eyebrow">STATIC RAG PREVIEW</p>
+          <h2>Ask the coffee market index</h2>
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>
-          Static retrieval live
+          Static retrieval bundle
         </div>
       </header>
 
@@ -72,6 +93,19 @@
       mode: "static-search",
       reportCount: 13,
       chunkCount: 222,
+      embeddingBackend: "sentence-transformers+faiss",
+      embeddingModel: "sentence-transformers/all-MiniLM-L6-v2",
+      vectorIndex: "IndexFlatIP",
+      llmMode: "auto",
+      llmModel: "gpt-5.5",
+      llmEnabled: false,
+      systemHighlights: [
+        "Built a retrieval-augmented generation (RAG) system with optional LLM generation to automate cited insights from coffee market reports.",
+        "Built automated ingestion and retrieval workflows with embeddings and FAISS vector search.",
+        "Optimized retrieval workflows with metadata filters, normalized vectors, and ranked evidence selection.",
+        "Processed and embedded unstructured PDF reports for scalable semantic search and analysis.",
+        "Implemented a CI/CD pipeline with GitHub Actions for testing, deployment, smoke checks, and scheduled refreshes."
+      ],
       dataUrl: "./data/search-data.json",
       localRunCommand: "python3 app/app.py --serve",
       suggestions: [

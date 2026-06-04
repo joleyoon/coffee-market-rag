@@ -1,6 +1,6 @@
+faiss-cpu==1.9.0.post1
 joblib==1.5.2
 numpy==2.2.1
 PyPDF2==3.0.1
-scikit-learn==1.7.1
-scipy==1.14.1
+sentence-transformers==5.5.1
 threadpoolctl==3.6.0
