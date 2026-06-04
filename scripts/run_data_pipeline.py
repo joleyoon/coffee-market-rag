@@ -61,7 +61,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--latest-manifest-path", default=str(DEFAULT_PIPELINE_MANIFEST))
     parser.add_argument("--chunk-size", type=int, default=400)
     parser.add_argument("--overlap", type=int, default=80)
-    parser.add_argument("--max-features", type=int, default=50000)
+    parser.add_argument("--embedding-model", default=build_vector_index.DEFAULT_EMBEDDING_MODEL)
+    parser.add_argument("--embedding-batch-size", type=int, default=32)
+    parser.add_argument("--max-features", type=int, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--skip-trend-export", action="store_true")
     parser.add_argument("--skip-static-export", action="store_true")
     parser.add_argument("--static-output-path", default=str(DEFAULT_STATIC_SEARCH_DATA))
@@ -152,18 +154,21 @@ def build_pipeline_manifest(
         default=None,
     )
     current_report_ids = {report["report_id"] for report in extracted_reports}
+    index_metadata = index_payload.get("metadata", {})
 
     return {
         "dataset_version": dataset_version,
         "built_at": built_at,
         "stages": ["ingest", "clean", "chunk", "embed", "store", "serve"],
-        "embedding_backend": index_payload.get("metadata", {}).get("embedding_backend"),
+        "embedding_backend": index_metadata.get("embedding_backend"),
+        "embedding_model": index_metadata.get("embedding_model"),
+        "vector_index": index_metadata.get("faiss_index_type"),
         "source_manifest_path": str(source_manifest_path),
         "version_root": str(version_root),
         "artifacts": {
             "extracted_jsonl": str(version_root / "extracted_text" / "reports.jsonl"),
             "chunks_path": str(version_root / "chunks" / "chunks.jsonl"),
-            "index_path": str(version_root / "index" / "tfidf_index.pkl"),
+            "index_path": str(version_root / "index" / "faiss_index.pkl"),
             "trend_path": str(version_root / "trends" / "trend-data.json"),
         },
         "report_count": len(current_report_ids),
@@ -250,6 +255,8 @@ def run_pipeline(args: argparse.Namespace) -> tuple[dict, int]:
         chunks,
         output_path=version_paths.index_path,
         max_features=args.max_features,
+        embedding_model_name=args.embedding_model,
+        batch_size=args.embedding_batch_size,
         dataset_version=dataset_version,
         built_at=built_at,
     )
